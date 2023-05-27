@@ -81,11 +81,12 @@ DECLARE
 	col			TEXT;
 	keyspec		admin.partition_keyspec;
 	defbound	admin.partition_bound;
+	defpart		admin.partition;
 
 BEGIN
 	RAISE DEBUG 'admin.alter_table_partition_by tabqname ''%'' skeyspec ''%''',tabqname,skeyspec;
 	qualname=admin.string_to_qualname(tabqname);
-	keyspec=admin.string_to_partition_keyspec(skeyspec);
+	keyspec=admin.string_to_partition_keyspec(qualname,skeyspec);
 
 	RAISE DEBUG 'admin.alter_table_partition_by qualname ''%''', qualname;
 	RAISE DEBUG 'admin.alter_table_partition_by keyspec ''%''', keyspec;
@@ -98,16 +99,6 @@ BEGIN
 	END IF;
 	RAISE DEBUG 'table ''%'' does not exists',qualname;
 
-	-- Check partitionning columns exists
-	FOREACH col IN ARRAY keyspec.colnames
-	LOOP
-		colexists=admin.column_exists(qualname,col);
-	    IF (NOT colexists)
-	    THEN
-	        RAISE EXCEPTION 'Column % of table % does not exists',col,tabqname;
-	    END IF;
-	END LOOP;
-	
 	-- Get default name
 	defname=admin.generate_default_partition_name(qualname);
 	RAISE DEBUG 'admin.alter_table_partition_by defname %',defname;
@@ -115,15 +106,15 @@ BEGIN
 	-- Rename table to default name
 	PERFORM admin.rename_table(qualname,defname);
 
-	-- Create partitionned table from initial table but with new parttype(partkeys)
-	PERFORM admin.create_table(qualname,defname,keyspec);
-	
 	defbound=admin.make_default_partition_bound(keyspec);
 	RAISE DEBUG 'admin.alter_table_partition_by defbound %',defbound;
 
+	defpart=admin.make_partition(defname,defbound);
+
+	-- Create partitionned table from initial table but with new parttype(partkeys)
+	PERFORM admin.create_table(qualname,defname,keyspec,defpart);
+	
 	RAISE DEBUG 'admin.alter_table_partition_by admin.attach_partition(%,%,%)',qualname,defname,defbound;
-    -- Attach default if defbound is not null
-	PERFORM admin.attach_partition(qualname,defname,defbound);
 END
 $$;
 
@@ -262,7 +253,7 @@ BEGIN
 
 	IF ((partqkey <> '') IS TRUE)
 	THEN
-		partkey=admin.string_to_partition_keyspec(partqkey);
+		partkey=admin.string_to_partition_keyspec(tabname,partqkey);
 		RAISE DEBUG 'admin.create_table_like partkey %',partkey;
 
 		IF ((qparts[1] <> '') IS TRUE)

@@ -4,7 +4,7 @@
 \i partition_types.sql
 
 
-CREATE FUNCTION admin.string_to_partition_keyspec(stringkeydef TEXT)
+CREATE FUNCTION admin.string_to_partition_keyspec(tabname admin.qualified_name, stringkeydef TEXT)
 RETURNS admin.partition_keyspec
 LANGUAGE plpgsql
 AS
@@ -14,6 +14,8 @@ DECLARE
 	strategy    admin.partition_strategy;
 	col         TEXT;
 	partcol     TEXT[];
+	coltype		TEXT;
+	coltypes	TEXT[];
 	keyspec     admin.partition_keyspec;
 
 BEGIN
@@ -25,11 +27,13 @@ BEGIN
     FOREACH col IN ARRAY string_to_array(readkeydef[2],',')
     LOOP
         col=trim(BOTH col);
+		SELECT * FROM admin.get_column_info(tabname,col) INTO col,coltype;
         partcol=array_append(partcol,col);
+		coltypes=array_append(coltypes,coltype);
     END LOOP;
 	keyspec.strategy=strategy;
 	keyspec.colnames=partcol;
-	keyspec.coltypes=NULL;
+	keyspec.coltypes=coltypes;
 
 	RAISE DEBUG 'admin.get_keyspec keyspec %',keyspec;
 

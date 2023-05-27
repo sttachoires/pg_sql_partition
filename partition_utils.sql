@@ -78,30 +78,37 @@ DECLARE
 	pgversion	BIGINT;
 
 BEGIN
-	RAISE DEBUG 'admin.qualname_to_string tabqname ''%''',tabqname;
+	RAISE DEBUG 'admin.string_to_qualname tabqname ''%''',tabqname;
 	IF ((tabqname <> '') IS NOT TRUE)
 	THEN
 		RETURN NULL;
 	END IF;
 
 	tabaname=pg_catalog.parse_ident(tabqname);	
+	RAISE DEBUG 'admin.string_to_qualname tabaname ''%''',tabaname;
+
 	IF (pg_catalog.array_length(tabaname,1) = 2)
 	THEN
 		qualname=admin.make_qualname(tabaname[1],tabaname[2]);
+		RAISE DEBUG 'admin.string_to_qualname qualname ''%''',qualname;
+
 	ELSIF (pg_catalog.array_length(tabaname,1) = 1)
 	THEN
 		SELECT setting::BIGINT INTO pgversion FROM pg_settings WHERE name = 'server_version_num';
+		RAISE DEBUG 'admin.string_to_qualname pgversion ''%''',pgversion;
+
 		IF (pgversion >= 150000)
 		THEN
 			qualname=admin.make_qualname(current_role,tabaname[1]);
 		ELSE
 			qualname=admin.make_qualname('public',tabaname[1]);
 		END IF;
+		RAISE DEBUG 'admin.string_to_qualname qualname ''%''',qualname;
 	ELSE
 		RAISE EXCEPTION 'hill formed relation name "%"',tabqname;
 	END IF;
 
-	RAISE DEBUG 'admin.qualname_to_string qualname ''%''',qualname;
+	RAISE DEBUG 'admin.string_to_qualname qualname ''%''',qualname;
 	RETURN qualname;
 END
 $$;
@@ -120,7 +127,7 @@ BEGIN
     RAISE DEBUG 'admin.generate_table_name prefix %',prefix;
 
 	rndm=(SELECT md5(random()::text));
-	tabname=concat(prefix,pg_catalog.substr(rndm,1,4));
+	tabname=concat(prefix,pg_catalog.substr(rndm,1,3));
 	name=admin.make_qualname(nsname,tabname);
 	
 	WHILE admin.table_exists(name)
@@ -381,6 +388,7 @@ $$
 DECLARE
     rec         RECORD;
     seqname     TEXT;
+
 BEGIN
     FOR rec IN (
         SELECT a.attname    AS "colname"
@@ -499,7 +507,7 @@ CREATE VIEW admin.partitions AS (
           AND sp.relname = 'ptable'
           AND c.oid NOT IN (SELECT inhrelid FROM pg_inherits)
           AND c.oid NOT IN (SELECT inhparent FROM pg_inherits)
-	)
+	) AS dp
 	ORDER BY "parent" NULLS FIRST, "type" DESC, "name"
 );
 

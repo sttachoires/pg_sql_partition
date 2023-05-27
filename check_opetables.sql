@@ -67,7 +67,6 @@ CREATE TABLE public.tb_7 PARTITION OF public.tb FOR VALUES IN (7,8,9);
 CREATE TABLE public.tb_d PARTITION OF public.tb DEFAULT;
 INSERT INTO public.tb (region_id) VALUES (generate_series(1, 10));
 SELECT * FROM admin.partitions;
-SELECT * FROM admin.relations;
 SET client_min_messages = NOTICE;
 SELECT 'admin.get_table_partition_names',*
 FROM admin.get_table_partition_names(admin.string_to_qualname('tb'));
@@ -105,9 +104,11 @@ CREATE TABLE public.tb_a PARTITION OF public.tb FOR VALUES WITH (MODULUS 12 ,REM
 CREATE TABLE public.tb_b PARTITION OF public.tb FOR VALUES WITH (MODULUS 12 ,REMAINDER 10);
 CREATE TABLE public.tb_c PARTITION OF public.tb FOR VALUES WITH (MODULUS 12 ,REMAINDER 11);
 INSERT INTO public.tb (region_id) VALUES (generate_series(1, 50));
-SET client_min_messages = NOTICE;
-SELECT 'admin.get_table_partition_names',*
-FROM admin.get_table_partition_names(admin.string_to_qualname('tb'));
+SET client_min_messages = debug;
+
+SELECT 'admin.get_table_partition_names',pg_catalog.unnest(tbn)
+FROM admin.get_table_partition_names(admin.string_to_qualname('public.tb')) AS tbn;
+
 SET client_min_messages = notice;
 
 SET client_min_messages = notice;
@@ -126,11 +127,10 @@ SELECT 'admin.get_partition_bound',*
 FROM admin.get_partition_bound(admin.make_qualname('public'::TEXT,'tb_1'));
 SET client_min_messages = notice;
 
-SELECT 'admin.get_partition_bounds',*
+SELECT 'admin.get_partition_bounds',pg_catalog.unnest(tpb)
 FROM admin.get_partition_bounds(ARRAY[admin.make_qualname('public'::TEXT,'tb_1'),
                                       admin.make_qualname('public'::TEXT,'tb_2'),
-                                      admin.make_qualname('public'::TEXT,'tb_d')]);
-;
+                                      admin.make_qualname('public'::TEXT,'tb_d')]) AS tpb;
 
 SET client_min_messages = notice;
 DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;;
@@ -391,8 +391,8 @@ SELECT 'admin.get_partition',*
 FROM admin.get_partition(admin.make_qualname('public','tb_2'));
 SET client_min_messages = notice;
 SET client_min_messages = NOTICE;
-SELECT 'admin.get_partitions',*
-FROM admin.get_partitions(admin.make_qualname('public','tb_2'), admin.make_qualname('public','tb_d'));
+SELECT 'admin.get_partitions',pg_catalog.unnest(tp)
+FROM admin.get_partitions(admin.make_qualname('public','tb_2'), admin.make_qualname('public','tb_d')) AS tp;
 SET client_min_messages = notice;
 
 SELECT 'admin.get_table_constraints',*

@@ -51,7 +51,8 @@ $$
 DECLARE
     partnames   admin.qualified_name[];
 BEGIN
-    SELECT array_agg(admin.string_to_qualname(ns.nspname::TEXT||'.'||c.relname::TEXT)) INTO partnames
+	RAISE DEBUG 'admin.get_table_partition_names tabqname %',tabqname;
+    SELECT array_agg(admin.make_qualname(ns.nspname,c.relname)) INTO partnames
         FROM pg_catalog.pg_class p
         JOIN pg_catalog.pg_namespace ns ON ns.oid = p.relnamespace
         JOIN pg_catalog.pg_inherits inh ON inh.inhparent = p.oid
@@ -60,6 +61,7 @@ BEGIN
           AND ns.nspname = (tabqname).nsname
           AND p.relname = (tabqname).relname;
 
+	RAISE DEBUG 'admin.get_table_partition_names partnames %',partnames;
     RETURN partnames;
 END
 $$;
@@ -274,10 +276,14 @@ BEGIN
 
 	RAISE DEBUG 'admin.create_partition partstring %',partstring;
 
-	cmd=format('CREATE TABLE %I.%I PARTITION OF %I.%I %s',partname.nsname,partname.relname,tabname.nsname,tabname.relname,partstring);
-	RAISE DEBUG 'admin.create_partition cmd %',cmd;
-
-	EXECUTE cmd;
+	IF (admin.table_exists(partname))
+	THEN
+		PERFORM admin.attach_partition(tabname,partname,partbound);
+	ELSE
+		cmd=format('CREATE TABLE %I.%I PARTITION OF %I.%I %s',partname.nsname,partname.relname,tabname.nsname,tabname.relname,partstring);
+		RAISE DEBUG 'admin.create_partition cmd %',cmd;
+		EXECUTE cmd;
+	END IF;
 END
 $$;
 

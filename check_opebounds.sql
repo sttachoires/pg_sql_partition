@@ -1,7 +1,7 @@
 SET client_min_messages=notice;
 \set ON_ERROR_STOP on
 \i partition_opebounds.sql
-
+\x auto
 SELECT 'admin.hash_partition_bound_to_qualifier',*
 FROM admin.hash_partition_bound_to_qualifier(admin.make_qualname('public'::TEXT,'tb5'::TEXT),
                                         admin.make_hash_partition_bound(admin.make_partition_keyspec('hash',
