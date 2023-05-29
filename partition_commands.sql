@@ -82,6 +82,7 @@ DECLARE
 	keyspec		admin.partition_keyspec;
 	defbound	admin.partition_bound;
 	defpart		admin.partition;
+	defqual		TEXT;
 
 BEGIN
 	RAISE DEBUG 'admin.alter_table_partition_by tabqname ''%'' skeyspec ''%''',tabqname,skeyspec;
@@ -103,18 +104,22 @@ BEGIN
 	defname=admin.generate_default_partition_name(qualname);
 	RAISE DEBUG 'admin.alter_table_partition_by defname %',defname;
 
-	-- Rename table to default name
-	PERFORM admin.rename_table(qualname,defname);
-
 	defbound=admin.make_default_partition_bound(keyspec);
 	RAISE DEBUG 'admin.alter_table_partition_by defbound %',defbound;
 
 	defpart=admin.make_partition(defname,defbound);
 
+	PERFORM format('ALTER TABLE %I.%I ADD CONSTRAINT CHECK "%s_check_part" (%s) NOT VALID',
+		qualname.nsname,qualname.relname,qualname.relname,admin.partition_bound_to_qualifier(defbound));
+
+	-- Rename table to default name
+	PERFORM admin.rename_table(qualname,defname);
+
 	-- Create partitionned table from initial table but with new parttype(partkeys)
 	PERFORM admin.create_table(qualname,defname,keyspec,defpart);
 	
-	RAISE DEBUG 'admin.alter_table_partition_by admin.attach_partition(%,%,%)',qualname,defname,defbound;
+	PERFORM format('ALTER TABLE %I.%I DROP CONSTRAINT "%s_check_part"',
+		qualname.nsname,qualname.relname,qualname.relname);
 END
 $$;
 
@@ -170,6 +175,58 @@ BEGIN
 	END IF;
 END
 $$;
+
+--CREATE PROCEDURE admin.alter_table_split_partition_concurently(tabqname TEXT, srcqname TEXT, VARIADIC partspecs TEXT[])
+--LANGUAGE plpgsql
+--AS
+--$$
+--DECLARE
+--    tabname     admin.qualified_name;
+--    srcname     admin.qualified_name;
+--    srcpart     admin.partition;
+--    keyspec     admin.partition_keyspec;
+--    partspec    TEXT;
+--    part        admin.partition;
+--    parts       admin.partition[];
+--
+--BEGIN
+--    RAISE DEBUG 'admin.alter_table_split_partition tabqname %',tabqname;
+--    tabname=admin.string_to_qualname(tabqname);
+--    RAISE DEBUG 'admin.alter_table_split_partition tabname %',tabname;
+--
+--    RAISE DEBUG 'admin.alter_table_split_partition srcqname %',srcqname;
+--    srcname=admin.string_to_qualname(srcqname);
+--    RAISE DEBUG 'admin.alter_table_split_partition srcname %',srcname;
+--
+--    srcpart=admin.get_partition(srcname);
+--    RAISE DEBUG 'admin.alter_table_split_partition srcpart %',srcpart;
+--
+--    keyspec=admin.get_partition_keyspec(tabname);
+--    RAISE DEBUG 'admin.alter_table_split_partition keyspec %',keyspec;
+--
+--    FOREACH partspec IN ARRAY partspecs
+--    LOOP
+--        RAISE DEBUG 'admin.alter_table_split_partition partspec %',partspec;
+--        part=admin.string_to_partition(keyspec,partspec);
+--        RAISE DEBUG 'admin.alter_table_split_partition part %',part;
+--        parts=pg_catalog.array_append(parts,part);
+--        RAISE DEBUG 'admin.alter_table_split_partition parts %',parts;
+--    END LOOP;
+--
+--    IF (keyspec.strategy = 'list')
+--    THEN
+--        PERFORM admin.split_list_partition(tabname, srcpart, VARIADIC parts);
+--    ELSIF (keyspec.strategy = 'range')
+--    THEN
+--        CALL admin.split_range_partition_concurently(tabname, srcpart, VARIADIC parts);
+--    ELSIF (keyspec.strategy = 'hash')
+--    THEN
+--        PERFORM admin.split_hash_partition(tabname, srcpart, VARIADIC parts);
+--    ELSE
+--        RAISE EXCEPTION 'unknown partition strategy %',keyspec.strategy;
+--    END IF;
+--END
+--$$;
 
 CREATE FUNCTION admin.alter_table_merge_partitions(tabqname TEXT, dstqname TEXT, VARIADIC srcnamelist TEXT[])
 RETURNS VOID

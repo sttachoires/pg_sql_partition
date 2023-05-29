@@ -4,13 +4,31 @@
 
 \i partition_strings.sql
 
-CREATE FUNCTION admin.get_table_constraints(tabqname admin.qualified_name)
-RETURNS VOID
+CREATE FUNCTION admin.get_table_constraint_defs(tabname admin.qualified_name)
+RETURNS TEXT[]
 LANGUAGE plpgsql
 AS
 $$
 DECLARE
+	constraints	TEXT[];
+
 BEGIN
+
+	SELECT pg_catalog.array_agg(c.conname||' '||pg_catalog.pg_get_constraintdef(c.oid)) INTO constraints
+       FROM pg_catalog.pg_constraint c
+            INNER JOIN pg_catalog.pg_namespace n
+                       ON n.oid = c.connamespace
+            CROSS JOIN LATERAL unnest(c.conkey) ak(k)
+            INNER JOIN pg_attribute a
+                       ON a.attrelid = c.conrelid
+                          AND a.attnum = ak.k
+       WHERE c.conrelid::regclass::text = tabname.relname
+		 AND n.nspname = tabname.nsname;
+
+	RETURN constraints;
+END
+$$;
+
 --	SELECT  c.conrelid::regclass,c.conname,pg_get_constraintdef(c.oid),pg_get_expr(c.conbin,c.conrelid::regclass::oid)
 --       FROM pg_constraint c
 --            INNER JOIN pg_namespace n
@@ -20,6 +38,36 @@ BEGIN
 --                       ON a.attrelid = c.conrelid
 --                          AND a.attnum = ak.k
 --       WHERE c.conrelid::regclass::text = 'tb';
+--
+--	ALTER TABLE public.tb ADD CONSTRAINT tb_reg_id CHECK (substr(regionid,1,3) IN ('EUR','ASI','AFR','AMN')) NOT VALID;
+--
+--	RAISE DEBUG 'admin.get_table_constraints qualifier %',qualifiers;
+--	RETURN qualifiers;
+--END
+--$$;
+
+CREATE FUNCTION admin.get_table_constraint_qualifier(tabname admin.qualified_name)
+RETURNS TEXT
+LANGUAGE plpgsql
+AS
+$$
+DECLARE
+    qualifier   TEXT;
+
+BEGIN
+	SELECT array_to_string((SELECT array_agg(pg_get_expr(c.conbin,c.conrelid::regclass::oid)))::TEXT[],' AND ') INTO qualifier
+       FROM pg_constraint c
+            INNER JOIN pg_namespace n
+                       ON n.oid = c.connamespace
+            CROSS JOIN LATERAL unnest(c.conkey) ak(k)
+            INNER JOIN pg_attribute a
+                       ON a.attrelid = c.conrelid
+                          AND a.attnum = ak.k
+       WHERE c.conrelid::regclass::text = tabname.relname
+		 AND n.nspname = tabname.nsname;
+
+    RAISE DEBUG 'admin.get_table_constraint_qualifier qualifier %',qualifier;
+    RETURN qualifier;
 END
 $$;
 

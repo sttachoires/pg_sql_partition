@@ -164,6 +164,31 @@ BEGIN
 END
 $$;
 
+CREATE FUNCTION admin.partition_bound_to_qualifier(bound admin.partition_bound)
+RETURNS TEXT
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    qualifier	TEXT;
+
+BEGIN
+	IF ((bound.keyspec).strategy = 'range')
+	THEN
+		qualifier=admin.range_partition_bound_to_qualifier(bound);
+	ELSIF ((bound.keyspec).strategy = 'list')
+    THEN
+		qualifier=admin.list_partition_bound_to_qualifier(bound);
+    ELSIF ((bound.keyspec).strategy = 'hash')
+    THEN
+		qualifier=admin.hash_partition_bound_to_qualifier(bound);
+    ELSE
+		RAISE EXCEPTION 'unknown partition strategy %',(bound.keyspec).strategy;
+	END IF;
+
+	RETURN qualifier;
+END
+$$;
+
 CREATE FUNCTION admin.sort_partition_bounds(bounds admin.partition_bound[])
 RETURNS admin.partition_bound[]
 LANGUAGE plpgsql
