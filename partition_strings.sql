@@ -27,9 +27,12 @@ BEGIN
     FOREACH col IN ARRAY string_to_array(readkeydef[2],',')
     LOOP
         col=trim(BOTH col);
-		SELECT * FROM admin.get_column_info(tabname,col) INTO col,coltype;
         partcol=array_append(partcol,col);
-		coltypes=array_append(coltypes,coltype);
+		IF (admin.table_exists(tabname))
+		THEN
+			SELECT * FROM admin.get_column_info(tabname,col) INTO col,coltype;
+			coltypes=array_append(coltypes,coltype);
+		END IF;
     END LOOP;
 	keyspec.strategy=strategy;
 	keyspec.colnames=partcol;

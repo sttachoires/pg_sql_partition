@@ -10,40 +10,54 @@ FROM admin.hash_partition_bound_to_qualifier(admin.make_qualname('public'::TEXT,
                                                                     admin.make_hash_bound(1,0)));
 
 SELECT 'admin.list_partition_bound_to_qualifier',*
-FROM admin.list_partition_bound_to_qualifier(admin.make_default_partition_bound(admin.make_partition_keyspec('list',
+FROM admin.list_partition_bound_to_qualifier(admin.make_qualname('public'::TEXT,'tb5'::TEXT),
+									 admin.make_default_partition_bound(admin.make_partition_keyspec('list',
                                      ARRAY['id'],
                                      ARRAY['bigint'])));
 
 SELECT 'admin.list_partition_bound_to_qualifier',*
-FROM admin.list_partition_bound_to_qualifier(admin.make_list_partition_bound(admin.make_partition_keyspec('list',
+FROM admin.list_partition_bound_to_qualifier(admin.make_qualname('public'::TEXT,'tb5'::TEXT),
+									 admin.make_list_partition_bound(admin.make_partition_keyspec('list',
                                      ARRAY['id'],
                                      ARRAY['bigint']),
                                 admin.make_list_bound(ARRAY[0,1,3,6,12,2,5,4,8])));
 
 SELECT 'admin.range_partition_bound_to_qualifier',*,'SELECT * FROM public.tb WHERE '||rpq.clause
-FROM admin.range_partition_bound_to_qualifier(admin.make_default_partition_bound(admin.make_partition_keyspec('RANGE',
+FROM admin.range_partition_bound_to_qualifier(admin.make_qualname('public'::TEXT,'tb5'::TEXT),
+									 admin.make_default_partition_bound(admin.make_partition_keyspec('RANGE',
                                      ARRAY['id','region_id'],
                                      ARRAY['bigint','bigint']))) rpq(clause);
 
 SELECT 'admin.range_partition_bound_to_qualifier',rpq.clause,'SELECT * FROM public.tb WHERE '||rpq.clause
-FROM admin.range_partition_bound_to_qualifier(admin.make_range_partition_bound(admin.make_partition_keyspec('range',
+FROM admin.range_partition_bound_to_qualifier(admin.make_qualname('public'::TEXT,'tb5'::TEXT),
+									 admin.make_range_partition_bound(admin.make_partition_keyspec('range',
                                      ARRAY['id'],
                                      ARRAY['bigint']),
                                     ARRAY[admin.make_range_bound(1,5)])) rpq(clause);
 
-SELECT 'admin.range_partition_bound_to_qualifier',rpq.clause,'SELECT * FROM public.tb WHERE '||rpq.clause
-FROM admin.range_partition_bound_to_qualifier(admin.make_range_partition_bound(admin.make_partition_keyspec('range',
+SELECT 'admin.range_partition_bound_to_qualifier',*
+FROM admin.range_partition_bound_to_qualifier(admin.make_qualname('public'::TEXT,'tb5'::TEXT),
+									 admin.make_range_partition_bound(admin.make_partition_keyspec('range',
                                      ARRAY['id','stamp'],
                                      ARRAY['bigint','timestamp with time zone']),
                                      ARRAY[admin.make_range_bound(1,5),
 										   admin.make_range_bound('2023-01-01 00:00:00+01'::TIMESTAMP WITH TIME ZONE,'2023-01-01 00:00:00+01'::timestamp with time zone)])) rpq(clause);
 
-SELECT 'admin.range_partition_bound_to_qualifier',rpq.clause,'SELECT * FROM public.tb WHERE '||rpq.clause
-FROM admin.range_partition_bound_to_qualifier(admin.make_range_partition_bound(admin.make_partition_keyspec('range',
+SELECT 'admin.range_partition_bound_to_qualifier',*
+FROM admin.range_partition_bound_to_qualifier(admin.make_qualname('public'::TEXT,'tb5'::TEXT),
+									 admin.make_range_partition_bound(admin.make_partition_keyspec('range',
                                      ARRAY['id','region_id','stamp'],
                                      ARRAY['bigint','bigint','timestamp with time zone']),
                                      ARRAY[admin.make_range_bound(1,5),admin.make_range_bound(1,5),
 										   admin.make_range_bound('2023-01-01 00:00:00+01'::TIMESTAMP WITH TIME ZONE,'2023-01-01 00:00:00+01'::timestamp with time zone)])) rpq(clause);
+
+SELECT 'admin.partition_bound_to_qualifier',*
+FROM admin.partition_bound_to_qualifier(admin.make_qualname('public'::TEXT,'tb5'::TEXT),
+                                     admin.make_range_partition_bound(admin.make_partition_keyspec('range',
+                                     ARRAY['id','region_id','stamp'],
+                                     ARRAY['bigint','bigint','timestamp with time zone']),
+                                     ARRAY[admin.make_range_bound(1,5),admin.make_range_bound(1,5),
+                                           admin.make_range_bound('2023-01-01 00:00:00+01'::TIMESTAMP WITH TIME ZONE,'2023-01-01 00:00:00+01'::timestamp with time zone)])) rpq(clause);
 
 SELECT 'admin.sort_partition_bounds',*
 FROM admin.sort_partition_bounds(

@@ -4,7 +4,7 @@
 \i partition_opetables.sql
 
 
-CREATE FUNCTION admin.list_partition_bound_to_qualifier(bound admin.partition_bound)
+CREATE FUNCTION admin.list_partition_bound_to_qualifier(parent admin.qualified_name, bound admin.partition_bound)
 RETURNS TEXT
 LANGUAGE plpgsql
 AS
@@ -37,20 +37,21 @@ DECLARE
 BEGIN
     IF (bound.isdefault)
     THEN
-        RAISE EXCEPTION 'hash partition could not be default';
+        qualifier='(true)';
+	ELSE
+	    modul=(bound.hashbound).modul;
+	    remain=(bound.hashbound).remain;
+	    -- hashtextextended('value', 8816678312871386365)::numeric + 5305509591434766563) % 8
+	
+	    qualifier=format('satisfies_hash_partition(''%I.%I''::regclass::oid,%s,%s,%I)',parent.nsname,parent.relname,modul,remain,array_to_string((bound.keyspec).colnames,','));
+	    qualifier=concat('(',qualifier,')');
+	    RAISE DEBUG 'admin.hash_partition_bound_to_qualifier qualifier ''%''',qualifier;
     END IF;
-    modul=(bound.hashbound).modul;
-    remain=(bound.hashbound).remain;
-    -- hashtextextended('value', 8816678312871386365)::numeric + 5305509591434766563) % 8
-
-    qualifier=format('satisfies_hash_partition(''%I.%I''::regclass::oid,%s,%s,%I)',parent.nsname,parent.relname,modul,remain,array_to_string((bound.keyspec).colnames,','));
-    qualifier=concat('(',qualifier,')');
-    RAISE DEBUG 'admin.hash_partition_bound_to_qualifier qualifier ''%''',qualifier;
     RETURN qualifier;
 END
 $$;
 
-CREATE FUNCTION admin.range_partition_bound_to_qualifier(bound admin.partition_bound)
+CREATE FUNCTION admin.range_partition_bound_to_qualifier(parent admin.qualified_name, bound admin.partition_bound)
 RETURNS TEXT
 LANGUAGE plpgsql
 AS
@@ -164,7 +165,7 @@ BEGIN
 END
 $$;
 
-CREATE FUNCTION admin.partition_bound_to_qualifier(bound admin.partition_bound)
+CREATE FUNCTION admin.partition_bound_to_qualifier(tabname admin.qualified_name, bound admin.partition_bound)
 RETURNS TEXT
 LANGUAGE plpgsql
 AS $$
@@ -174,13 +175,13 @@ DECLARE
 BEGIN
 	IF ((bound.keyspec).strategy = 'range')
 	THEN
-		qualifier=admin.range_partition_bound_to_qualifier(bound);
+		qualifier=admin.range_partition_bound_to_qualifier(tabname, bound);
 	ELSIF ((bound.keyspec).strategy = 'list')
     THEN
-		qualifier=admin.list_partition_bound_to_qualifier(bound);
+		qualifier=admin.list_partition_bound_to_qualifier(tabname, bound);
     ELSIF ((bound.keyspec).strategy = 'hash')
     THEN
-		qualifier=admin.hash_partition_bound_to_qualifier(bound);
+		qualifier=admin.hash_partition_bound_to_qualifier(tabname, bound);
     ELSE
 		RAISE EXCEPTION 'unknown partition strategy %',(bound.keyspec).strategy;
 	END IF;

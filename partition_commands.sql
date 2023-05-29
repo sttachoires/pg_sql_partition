@@ -110,7 +110,7 @@ BEGIN
 	defpart=admin.make_partition(defname,defbound);
 
 	PERFORM format('ALTER TABLE %I.%I ADD CONSTRAINT CHECK "%s_check_part" (%s) NOT VALID',
-		qualname.nsname,qualname.relname,qualname.relname,admin.partition_bound_to_qualifier(defbound));
+		qualname.nsname,qualname.relname,qualname.relname,admin.partition_bound_to_qualifier(qualname,defbound));
 
 	-- Rename table to default name
 	PERFORM admin.rename_table(qualname,defname);

@@ -3,7 +3,7 @@ SET client_min_messages=notice;
 \i partition_strings.sql
 
 SELECT 'admin.string_to_partition_keyspec',*
-FROM admin.string_to_partition_keyspec('Range( id,   region_id)');
+FROM admin.string_to_partition_keyspec(admin.make_qualname('public','tb'),'Range( id,   region_id)');
 
 SELECT 'admin.partition_keyspec_to_string',*
 FROM admin.partition_keyspec_to_string(admin.make_partition_keyspec('hash',

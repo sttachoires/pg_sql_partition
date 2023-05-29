@@ -36,7 +36,7 @@ BEGIN
 		END IF;
         defname=admin.detach_partition(tabqname,srcname,true);
 
-		partboundqual=admin.range_partition_bound_to_qualifier(dstbound);
+		partboundqual=admin.range_partition_bound_to_qualifier(dstname,dstbound);
 
 		PERFORM admin.move_rows(srcname,dstname,partboundqual);
 
@@ -133,7 +133,7 @@ BEGIN
 
 		defname=admin.detach_partition(tabqname,srcname,true);
 
-		qualifier=admin.list_partition_bound_to_qualifier((dstpart).partbound);
+		qualifier=admin.list_partition_bound_to_qualifier((dstpart).partname,(dstpart).partbound);
 
 		PERFORM admin.move_rows(srcname,dstname,qualifier);
 

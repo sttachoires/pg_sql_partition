@@ -395,8 +395,11 @@ SELECT 'admin.get_partitions',pg_catalog.unnest(tp)
 FROM admin.get_partitions(admin.make_qualname('public','tb_2'), admin.make_qualname('public','tb_d')) AS tp;
 SET client_min_messages = notice;
 
-SELECT 'admin.get_table_constraints',*
-FROM admin.get_table_constraints(admin.make_qualname('public','tb_2'));
+SELECT 'admin.get_table_constraint_defs',*
+FROM admin.get_table_constraint_defs(admin.make_qualname('public','tb_2'));
+
+SELECT 'admin.get_table_constraint_qualifier',*
+FROM admin.get_table_constraint_qualifier(admin.make_qualname('public','tb_2'));
 
 SELECT 'admin.check_them_all',* FROM admin.check_them_all();
 
