@@ -191,9 +191,21 @@ FROM admin.move_rows(admin.make_qualname('public','t1'),admin.make_qualname('pub
 
 SELECT admin.rowcount(admin.make_qualname('public','t1')),admin.rowcount(admin.make_qualname('public','t2'));
 
+SET client_min_messages = notice;
+DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;
+CREATE TABLE public.tb (id BIGSERIAL, label TEXT, stamp TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT current_timestamp, region_id BIGINT,
+    PRIMARY KEY (id));
+CREATE TABLE public.regtb1 (id BIGSERIAL, label TEXT, stamp TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT current_timestamp, tb_id BIGINT REFERENCES public.tb(id));
+CREATE TABLE public.regtb2 (id BIGSERIAL, label TEXT, stamp TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT current_timestamp, tb_id BIGINT REFERENCES public.tb(id));
+CREATE TABLE public.tbp (id BIGSERIAL, label TEXT, stamp TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT current_timestamp, region_id BIGINT,
+    PRIMARY KEY (id))
+    PARTITION BY HASH(id);
+
+SET client_min_messages = NOTICE;
+SELECT 'admin.swap_tables',*
+FROM admin.swap_tables(admin.make_qualname('public','tb'),admin.make_qualname('public','tbp'));
+
+SET client_min_messages = notice;
 SELECT 'admin.check_them_all',*
 FROM admin.check_them_all();
-
-SET client_min_messages=notice;
-
 

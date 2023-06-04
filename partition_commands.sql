@@ -75,14 +75,10 @@ AS
 $$
 DECLARE
 	tblexists	BOOLEAN;
-	colexists	BOOLEAN;
 	qualname	admin.qualified_name;
 	defname		admin.qualified_name;
-	col			TEXT;
 	keyspec		admin.partition_keyspec;
 	defbound	admin.partition_bound;
-	defpart		admin.partition;
-	defqual		TEXT;
 
 BEGIN
 	RAISE DEBUG 'admin.alter_table_partition_by tabqname ''%'' skeyspec ''%''',tabqname,skeyspec;
@@ -107,17 +103,17 @@ BEGIN
 	defbound=admin.make_default_partition_bound(keyspec);
 	RAISE DEBUG 'admin.alter_table_partition_by defbound %',defbound;
 
-	defpart=admin.make_partition(defname,defbound);
-
 	PERFORM format('ALTER TABLE %I.%I ADD CONSTRAINT CHECK "%s_check_part" (%s) NOT VALID',
 		qualname.nsname,qualname.relname,qualname.relname,admin.partition_bound_to_qualifier(qualname,defbound));
 
-	-- Rename table to default name
-	PERFORM admin.replace_table(qualname,defname);
-
 	-- Create partitionned table from initial table but with new parttype(partkeys)
-	PERFORM admin.create_table(qualname,defname,keyspec,defpart);
+	PERFORM admin.create_table(defname,qualname,keyspec);
 	
+	-- Swap the two tables
+	PERFORM admin.swap_tables(qualname,defname);
+
+	PERFORM admin.attach_partition(qualname,defname,defbound);
+
 	PERFORM format('ALTER TABLE %I.%I DROP CONSTRAINT "%s_check_part"',
 		qualname.nsname,qualname.relname,qualname.relname);
 

@@ -12,7 +12,9 @@ $$
 DECLARE
     qualifier   TEXT;
 BEGIN
+    RAISE DEBUG 'admin.list_partition_bound_to_qualifier parent %',parent;
     RAISE DEBUG 'admin.list_partition_bound_to_qualifier bound %',bound;
+
     IF (bound.isdefault)
     THEN
         qualifier='(true)';
@@ -63,6 +65,9 @@ DECLARE
     qualifier   TEXT;
 
 BEGIN
+	RAISE DEBUG 'admin.range_partition_bound_to_qualifier parent %',parent;
+	RAISE DEBUG 'admin.range_partition_bound_to_qualifier bound %',bound;
+
     IF (bound.isdefault)
     THEN
         RETURN '(true)';

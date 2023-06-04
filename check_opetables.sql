@@ -401,20 +401,6 @@ FROM admin.get_table_constraint_defs(admin.make_qualname('public','tb_2'));
 SELECT 'admin.get_table_constraint_qualifier',*
 FROM admin.get_table_constraint_qualifier(admin.make_qualname('public','tb_2'));
 
-SET client_min_messages = notice;
-DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;
-CREATE TABLE public.tb (id BIGSERIAL, label TEXT, stamp TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT current_timestamp, region_id BIGINT,
-	PRIMARY KEY (id));
-CREATE TABLE public.regtb (id BIGSERIAL, label TEXT, stamp TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT current_timestamp, tb_id BIGINT REFERENCES public.tb(id));
-CREATE TABLE public.tbp (id BIGSERIAL, label TEXT, stamp TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT current_timestamp, region_id BIGINT,
-    PRIMARY KEY (id, region_id))
-    PARTITION BY RANGE(region_id,id);
-
-
-SET client_min_messages = debug;
-SELECT 'admin.switch_table',*
-FROM admin.switch_table(admin.make_qualname('public','tb'),admin.make_qualname('public','tbp'));
-
 SELECT 'admin.check_them_all',* FROM admin.check_them_all();
 
 

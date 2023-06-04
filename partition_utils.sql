@@ -312,7 +312,7 @@ BEGIN
 END
 $$;
 
-CREATE FUNCTION admin.switch_table(tabname admin.qualified_name, newname admin.qualified_name)
+CREATE FUNCTION admin.swap_tables(tabname admin.qualified_name, newname admin.qualified_name)
 RETURNS VOID
 LANGUAGE plpgsql
 AS
@@ -320,36 +320,34 @@ $$
 DECLARE
 	tabid		pg_catalog.oid;
 	newid		pg_catalog.oid;
-	tmpid		pg_catalog.oid;
 	tmpname		admin.qualified_name;
-	tbrefname	admin.qualified_name[];
 	tbreffk		TEXT[];
-	tbrefcstr	TEXT[];
+	tbrefcstr	TEXT[][];
 
 BEGIN
-	RAISE DEBUG 'admin.switch_table tabname %',tabname;
-    RAISE DEBUG 'admin.switch_table newname %',newname;
+	RAISE DEBUG 'admin.swap_tables tabname %',tabname;
+    RAISE DEBUG 'admin.swap_tables newname %',newname;
 
 	SELECT t.oid INTO tabid
 	FROM pg_catalog.pg_class t
     JOIN pg_catalog.pg_namespace ns ON t.relnamespace = ns.oid
 	WHERE t.relname = tabname.relname
 	  AND ns.nspname = tabname.nsname;
-    RAISE DEBUG 'admin.switch_table tabid %',tabid;
+    RAISE DEBUG 'admin.swap_tables tabid %',tabid;
 
 	SELECT t.oid INTO newid
     FROM pg_catalog.pg_class t
     JOIN pg_catalog.pg_namespace ns ON t.relnamespace = ns.oid
     WHERE t.relname = newname.relname
       AND ns.nspname = newname.nsname;
-    RAISE DEBUG 'admin.switch_table newid %',newid;
+    RAISE DEBUG 'admin.swap_tables newid %',newid;
 
 	tmpname=admin.generate_table_name(tabname.nsname);
-    RAISE DEBUG 'admin.switch_table tmpname %',tmpname;
+    RAISE DEBUG 'admin.swap_tables tmpname %',tmpname;
 
-	SELECT	admin.make_qualname(ns.nspname,tf.relname) 	AS tbname,
-			cn.conname 									AS fkname, 
-			pg_catalog.pg_get_constraintdef(cn.oid) 	AS fkdecl
+	SELECT	pg_catalog.array_agg(ARRAY[ns.nspname,tf.relname,
+			cn.conname, 
+			pg_catalog.pg_get_constraintdef(cn.oid)]) INTO tbrefcstr
 	FROM	pg_catalog.pg_constraint	cn
 	JOIN	pg_catalog.pg_class			tf
 		ON 	tf.oid = cn.conrelid
@@ -358,30 +356,40 @@ BEGIN
 	JOIN	pg_catalog.pg_namespace		ns
 		ON	ns.oid = tb.relnamespace
 	WHERE	cn.contype = 'f'
-	  AND   ns.nspname = 'public'
-      AND   tb.relname = 'tb';
-
 	  AND	ns.nspname = tabname.nsname
-	  AND	tb.name = tbaname.relname;
+	  AND	tb.relname = tabname.relname;
 
- table_name |   foreign_key    |         pg_get_constraintdef          
-------------+------------------+---------------------------------------
- regtb      | regtb_tb_id_fkey | FOREIGN KEY (tb_id) REFERENCES tb(id)
-(1 row)
+	RAISE DEBUG 'admin.swap_tables tbrefcstr %',tbrefcstr;
 
+	-- drop all fk
+	IF (tbrefcstr IS NOT NULL)
+	THEN
+		FOREACH tbreffk SLICE 1 IN ARRAY tbrefcstr
+		LOOP
+			RAISE DEBUG 'admin.swap_tables tbreffk  %',tbreffk;
+			RAISE DEBUG 'admin.swap_tables ALTER TABLE %.% DROP CONSTRAINT %',tbreffk[1],tbreffk[2],tbreffk[3];
+			EXECUTE format('ALTER TABLE %I.%I DROP CONSTRAINT %I',tbreffk[1],tbreffk[2],tbreffk[3]);
+		END LOOP;
+	END IF;
 
+	-- swap table names
+	RAISE DEBUG 'admin.swap_tables ALTER TABLE %.% RENAME TO %',tabname.nsname,tabname.relname,tmpname.relname;
+	EXECUTE format('ALTER TABLE %I.%I RENAME TO %I',tabname.nsname,tabname.relname,tmpname.relname);
+	RAISE DEBUG 'admin.swap_tables ALTER TABLE %.% RENAME TO %',newname.nsname,newname.relname,tabname.relname;
+    EXECUTE format('ALTER TABLE %I.%I RENAME TO %I',newname.nsname,newname.relname,tabname.relname);
+    RAISE DEBUG 'admin.swap_tables ALTER TABLE %.% RENAME TO %',tmpname.nsname,tmpname.relname,newname.relname;
+	EXECUTE format('ALTER TABLE %I.%I RENAME TO %I',tmpname.nsname,tmpname.relname,newname.relname);
 
-
-
-
-	SELECT (max(oid)::BIGINT + 1)::pg_catalog.oid INTO tmpid FROM pg_catalog.pg_class;
-    RAISE DEBUG 'admin.switch_table tmpid %',tmpid;
-	RAISE DEBUG 'admin.switch_table UPDATE pg_catalog.pg_class pgc SET (oid,relname) = (%,%) WHERE pgc.oid=%',tmpid,tmpname.relname,tabid;
-	UPDATE pg_catalog.pg_class pgc SET (oid,relname) = (tmpid,tmpname.relname) WHERE pgc.oid=tabid;
-	RAISE DEBUG 'admin.switch_table UPDATE pg_catalog.pg_class pgc SET (oid,relname) = (%,%) WHERE pgc.oid=%',tabid,tabname.relname,newid;
-	UPDATE pg_catalog.pg_class pgc SET (oid,relname) = (tabid,tabname.relname) WHERE pgc.oid=newid;
-	RAISE DEBUG 'admin.switch_table UPDATE pg_catalog.pg_class pgc SET (oid,relname) = (%,%) WHERE pgc.oid=%',newid,newname.relname,tmpid;
-    UPDATE pg_catalog.pg_class pgc SET (oid,relname) = (newid,newname.relname) WHERE pgc.oid=tmpid;
+	-- recreate fks
+	IF (tbrefcstr IS NOT NULL)
+    THEN
+	    FOREACH tbreffk SLICE 1 IN ARRAY tbrefcstr
+	    LOOP
+	        RAISE DEBUG 'admin.swap_tables tbreffk  %',tbreffk;
+	        RAISE DEBUG 'admin.swap_tables ALTER TABLE %.% ADD CONSTRAINT % %',tbreffk[1],tbreffk[2],tbreffk[3],tbreffk[4];
+			EXECUTE format('ALTER TABLE %I.%I ADD CONSTRAINT %I %s',tbreffk[1],tbreffk[2],tbreffk[3],tbreffk[4]);
+	    END LOOP;
+	END IF;
 END
 $$;
 
