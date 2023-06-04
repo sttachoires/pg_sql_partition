@@ -113,13 +113,14 @@ BEGIN
 		qualname.nsname,qualname.relname,qualname.relname,admin.partition_bound_to_qualifier(qualname,defbound));
 
 	-- Rename table to default name
-	PERFORM admin.rename_table(qualname,defname);
+	PERFORM admin.replace_table(qualname,defname);
 
 	-- Create partitionned table from initial table but with new parttype(partkeys)
 	PERFORM admin.create_table(qualname,defname,keyspec,defpart);
 	
 	PERFORM format('ALTER TABLE %I.%I DROP CONSTRAINT "%s_check_part"',
 		qualname.nsname,qualname.relname,qualname.relname);
+
 END
 $$;
 
