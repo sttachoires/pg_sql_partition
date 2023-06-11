@@ -282,6 +282,13 @@ BEGIN
 END
 $$;
 
+CREATE FUNCTION admin.create_table(tabname admin.qualified_name, tplname admin.qualified_name, partkey admin.partition_keyspec=NULL, VARIADIC parts admin.partition[]=NULL)
+RETURNS VOID
+LANGUAGE plpgsql AS $$
+BEGIN
+END
+$$;
+
 CREATE FUNCTION admin.create_partition(tabname admin.qualified_name, tplname admin.qualified_name, part admin.partition)
 RETURNS VOID
 LANGUAGE plpgsql
@@ -297,7 +304,6 @@ DECLARE
 	tbbound			admin.partition_bound;
 	tbpart			admin.partition;
 	tbparts			admin.partition[];
-	cmd				TEXT;
 
 BEGIN
     RAISE DEBUG 'admin.create_partition tabname %',tabname;
@@ -312,9 +318,11 @@ BEGIN
 
 	IF (admin.table_exists(partname) IS NOT TRUE)
 	THEN
-		IF (tplname <> tabname)
+		IF ((tplname <> tabname) AND (tplname <> partname))
 		THEN
 			tbpartkeyspec=admin.get_partition_keyspec(tplname);
+			RAISE DEBUG 'admin.create_partition tbpartkeyspec %',tbpartkeyspec;
+
 			tbpartnames=admin.get_table_partition_names(tplname);
 			RAISE DEBUG 'admin.create_partition tbpartnames %',tbpartnames;
 		END IF;
@@ -329,7 +337,7 @@ BEGIN
 					tbbound=admin.get_partition_bound(tbpartname);
 					RAISE DEBUG 'admin.create_partition tbbound %',tbbound;
 
-					IF (tbboundi.isdefault)
+					IF (tbbound.isdefault)
 	                THEN
                     	tbname=admin.generate_default_partition_name(tabname);
     	            ELSE
@@ -338,10 +346,10 @@ BEGIN
 					RAISE DEBUG 'admin.create_partition tbname %',tbname;
 
 					tbpart=admin.make_partition(tbname,tbbound);
-					tbparts=pg_catalog.array_append(tbparts,tppart);
+					tbparts=pg_catalog.array_append(tbparts,tbpart);
 				END LOOP;
 				RAISE DEBUG 'admin.create_partition admin.create_table(%,%,%,%)',partname, tplname, tbpartkeyspec, tbparts;
-				PERFORM admin.create_table(partname, tplname, tbpartkeyspec, tbparts);
+				PERFORM admin.create_table(partname, tplname, tbpartkeyspec, VARIADIC tbparts);
 			ELSE
 				RAISE DEBUG 'admin.create_partition admin.create_table(%,%,%)',partname, tplname, tbpartkeyspec;
 				PERFORM admin.create_table(partname, tplname, tbpartkeyspec);
@@ -357,20 +365,13 @@ BEGIN
 END
 $$;
 
-CREATE FUNCTION admin.create_table(tabname admin.qualified_name, tplname admin.qualified_name, partkey admin.partition_keyspec=NULL, VARIADIC parts admin.partition[]=NULL)
+CREATE OR REPLACE FUNCTION admin.create_table(tabname admin.qualified_name, tplname admin.qualified_name, partkey admin.partition_keyspec=NULL, VARIADIC parts admin.partition[]=NULL)
 RETURNS VOID
 LANGUAGE plpgsql
 AS
 $$
 DECLARE
 	part		admin.partition;
-	tbpartnames	admin.qualified_name[];
-	tbpartname	admin.qualified_name;
-	tbpart		admin.partition;
-	tbparts		admin.partition[];
-	ppname		admin.qualified_name;
-	partpart	admin.partition;
-	partparts	admin.partition[];
 
 BEGIN
     RAISE DEBUG 'admin.create_table tabname %',tabname;
@@ -382,20 +383,20 @@ BEGIN
     THEN
         RAISE DEBUG 'admin.create_table partkey %',partkey;
 
-        RAISE NOTICE 'create table %.% like %.% partition by %',tabname.nsname,tabname.relname,tplname.nsname,tplname.relname,admin.partition_keyspec_to_string(partkey);
+        RAISE NOTICE 'admin.create_table CREATE TABLE %.% (LIKE %.% INCLUDING ALL) PARTITION BY %',tabname.nsname,tabname.relname,tplname.nsname,tplname.relname,admin.partition_keyspec_to_string(partkey);
         EXECUTE format('CREATE TABLE %I.%I (LIKE %I.%I INCLUDING ALL) PARTITION BY %s',tabname.nsname,tabname.relname,tplname.nsname,tplname.relname,admin.partition_keyspec_to_string(partkey));
 
 		IF ((parts IS NULL) IS NOT TRUE)
         THEN
-			RAISE DEBUG 'admin.create_table partparts %',parts;
+			RAISE DEBUG 'admin.create_table parts %',parts;
             FOREACH part IN ARRAY parts
             LOOP
                 RAISE DEBUG 'admin.create_table part %',part;
-                PERFORM admin.create_partition(tplname,tabname,part);
+                PERFORM admin.create_partition(tabname,tplname,part);
             END LOOP;
         END IF;
     ELSE
-        RAISE NOTICE 'create table %.% like %.%',tabname.nsname,tabname.relname,tplname.nsname,tplname.relname;
+        RAISE NOTICE 'CREATE TABLE %.% (LIKE %.% INCLUDING ALL)',tabname.nsname,tabname.relname,tplname.nsname,tplname.relname;
         EXECUTE format('CREATE TABLE %I.%I (LIKE %I.%I INCLUDING ALL)',tabname.nsname,tabname.relname,tplname.nsname,tplname.relname);
     END IF;
 END

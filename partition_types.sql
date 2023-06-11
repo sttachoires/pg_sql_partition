@@ -58,21 +58,26 @@ BEGIN
 	partkeydef=pg_catalog.pg_get_partkeydef(format('%I.%I',(tabqname).nsname,(tabqname).relname)::regclass);
 	RAISE DEBUG 'admin.get_partition_keyspec partkeydef ''%''',partkeydef;
 	
-	readkeydef=regexp_match(partkeydef,'([^[:space:]]+)[[:space:]]*\(([^)]+)\)[[:space:]]*');
-	strategy=lower(trim(BOTH readkeydef[1]))::admin.partition_strategy;
-	RAISE DEBUG 'admin.get_partition_keyspec readkeydef %',readkeydef;
-
-	FOREACH colname IN ARRAY pg_catalog.string_to_array(readkeydef[2],',')
-	LOOP
-		colname=lower(trim(BOTH FROM colname));
-		SELECT * FROM admin.get_column_info(tabqname,colname) INTO colname,coltype;
-		colnames=pg_catalog.array_append(colnames,colname);
-        coltypes=pg_catalog.array_append(coltypes,coltype);
-	END LOOP;
-
-	keyspec=admin.make_partition_keyspec(strategy::TEXT,colnames,coltypes);
-
-	RETURN keyspec;
+	IF (partkeydef IS NOT NULL)
+	THEN
+		readkeydef=regexp_match(partkeydef,'([^[:space:]]+)[[:space:]]*\(([^)]+)\)[[:space:]]*');
+		strategy=lower(trim(BOTH readkeydef[1]))::admin.partition_strategy;
+		RAISE DEBUG 'admin.get_partition_keyspec readkeydef %',readkeydef;
+	
+		FOREACH colname IN ARRAY pg_catalog.string_to_array(readkeydef[2],',')
+		LOOP
+			colname=lower(trim(BOTH FROM colname));
+			SELECT * FROM admin.get_column_info(tabqname,colname) INTO colname,coltype;
+			colnames=pg_catalog.array_append(colnames,colname);
+	        coltypes=pg_catalog.array_append(coltypes,coltype);
+		END LOOP;
+	
+		keyspec=admin.make_partition_keyspec(strategy::TEXT,colnames,coltypes);
+	
+		RETURN keyspec;
+	ELSE
+		RETURN NULL;
+	END IF;
 END
 $$;
 
