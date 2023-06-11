@@ -104,7 +104,7 @@ CREATE TABLE public.tb_a PARTITION OF public.tb FOR VALUES WITH (MODULUS 12 ,REM
 CREATE TABLE public.tb_b PARTITION OF public.tb FOR VALUES WITH (MODULUS 12 ,REMAINDER 10);
 CREATE TABLE public.tb_c PARTITION OF public.tb FOR VALUES WITH (MODULUS 12 ,REMAINDER 11);
 INSERT INTO public.tb (region_id) VALUES (generate_series(1, 50));
-SET client_min_messages = debug;
+SET client_min_messages = NOTICE;
 
 SELECT 'admin.get_table_partition_names',pg_catalog.unnest(tbn)
 FROM admin.get_table_partition_names(admin.string_to_qualname('public.tb')) AS tbn;
@@ -236,6 +236,7 @@ SELECT * FROM admin.partitions;
 SET client_min_messages = NOTICE;
 SELECT 'admin.create_partition'
 FROM admin.create_partition(admin.make_qualname('public','tbr'),
+							admin.make_qualname('public','tbr'),
 							admin.make_partition(admin.make_qualname('public','tbr_1'),
                                              admin.make_range_partition_bound(admin.make_partition_keyspec('Range',
                                                                                                             ARRAY['region_id','stamp','id'],
@@ -246,6 +247,7 @@ FROM admin.create_partition(admin.make_qualname('public','tbr'),
                                                                                     admin.make_range_bound(1,5)])));
 SELECT 'admin.create_partition'
 FROM admin.create_partition(admin.make_qualname('public','tbr'),
+							admin.make_qualname('public','tbr'),
                             admin.make_partition(admin.make_qualname('public','tbr_d'),
                                              admin.make_default_partition_bound(admin.make_partition_keyspec('Range',
                                                                                                             ARRAY['region_id','stamp','id'],
@@ -262,12 +264,14 @@ SELECT * FROM admin.partitions;
 SET client_min_messages = NOTICE;
 SELECT 'admin.create_partition'
 FROM admin.create_partition(admin.make_qualname('public','tbl'),
+							admin.make_qualname('public','tbl'),
                             admin.make_partition(admin.make_qualname('public','tbr_1'),
                                              admin.make_list_partition_bound(admin.make_partition_keyspec('list',ARRAY['region_id'],ARRAY['bigInt']),
                                                                              admin.make_list_bound(ARRAY[1,2,3]::bigint[]))));
 
 SELECT 'admin.create_partition'
 FROM admin.create_partition(admin.make_qualname('public','tbl'),
+							admin.make_qualname('public','tbl'),
                             admin.make_partition(admin.make_qualname('public','tbr_d'),
                                              admin.make_default_partition_bound(admin.make_partition_keyspec('list',ARRAY['region_id'],ARRAY['bigInt']))));
 SET client_min_messages = notice;
@@ -282,6 +286,7 @@ SELECT * FROM admin.partitions;
 SET client_min_messages = NOTICE;
 SELECT 'admin.create_partition'
 FROM admin.create_partition(admin.make_qualname('public','tbh'),
+							admin.make_qualname('public','tbh'),
                             admin.make_partition(admin.make_qualname('public','tbh_0'),
                                              admin.make_hash_partition_bound(admin.make_partition_keyspec('hash',
                                                                                                          ARRAY['region_id','stamp','id'],
@@ -289,6 +294,7 @@ FROM admin.create_partition(admin.make_qualname('public','tbh'),
                                                                              admin.make_hash_bound(2,0))));
 SELECT 'admin.create_partition'
 FROM admin.create_partition(admin.make_qualname('public','tbh'),
+							admin.make_qualname('public','tbh'),
                             admin.make_partition(admin.make_qualname('public','tbh_1'),
                                              admin.make_hash_partition_bound(admin.make_partition_keyspec('hash',
                                                                                                          ARRAY['region_id','stamp','id'],
@@ -301,7 +307,7 @@ DROP SCHEMA public CASCADE;
 CREATE SCHEMA public;
 CREATE TABLE public.tb_tpl (id BIGSERIAL, label TEXT, stamp TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT current_timestamp, region_id BIGINT);
 
-SET client_min_messages = NOTICE;
+SET client_min_messages = debug;
 SELECT 'admin.create_table',*
 FROM admin.create_table(admin.make_qualname('public','tbl'),
                         admin.make_qualname('public','tb_tpl'),
@@ -374,6 +380,23 @@ FROM admin.create_table(admin.make_qualname('public','tbh'),
 SET client_min_messages = notice;
 SELECT * FROM admin.partitions;
 
+SET client_min_messages = notice;
+DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;;
+CREATE TABLE public.tb (id BIGSERIAL, label TEXT, stamp TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT current_timestamp, region_id BIGINT,
+    PRIMARY KEY (id, region_id))
+    PARTITION BY RANGE(region_id,id);
+CREATE TABLE public.tb_1 PARTITION OF public.tb FOR VALUES FROM (1,1) TO (2,100000);
+CREATE TABLE public.tb_2 PARTITION OF public.tb FOR VALUES FROM (3,1) TO (6,100000);
+CREATE TABLE public.tb_4 PARTITION OF public.tb FOR VALUES FROM (7,1) TO (9,100000);
+CREATE TABLE public.tb_d PARTITION OF public.tb DEFAULT;
+INSERT INTO public.tb (region_id) VALUES (generate_series(1, 10));
+SELECT * FROM admin.partitions;
+SET client_min_messages = NOTICE;
+
+SELECT 'admin.create_table',*
+FROM admin.create_table(admin.make_qualname('public','tbh'),
+                        admin.make_qualname('public','tb'),
+						admin.make_partition_keyspec('hash',ARRAY['region_id','id'],ARRAY['BIGINT','BIGINT']));
 
 SET client_min_messages = notice;
 DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;;

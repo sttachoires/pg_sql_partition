@@ -29,23 +29,6 @@ BEGIN
 END
 $$;
 
---	SELECT  c.conrelid::regclass,c.conname,pg_get_constraintdef(c.oid),pg_get_expr(c.conbin,c.conrelid::regclass::oid)
---       FROM pg_constraint c
---            INNER JOIN pg_namespace n
---                       ON n.oid = c.connamespace
---            CROSS JOIN LATERAL unnest(c.conkey) ak(k)
---            INNER JOIN pg_attribute a
---                       ON a.attrelid = c.conrelid
---                          AND a.attnum = ak.k
---       WHERE c.conrelid::regclass::text = 'tb';
---
---	ALTER TABLE public.tb ADD CONSTRAINT tb_reg_id CHECK (substr(regionid,1,3) IN ('EUR','ASI','AFR','AMN')) NOT VALID;
---
---	RAISE DEBUG 'admin.get_table_constraints qualifier %',qualifiers;
---	RETURN qualifiers;
---END
---$$;
-
 CREATE FUNCTION admin.get_table_constraint_qualifier(tabname admin.qualified_name)
 RETURNS TEXT
 LANGUAGE plpgsql
@@ -299,7 +282,7 @@ BEGIN
 END
 $$;
 
-CREATE FUNCTION admin.create_partition(tabname admin.qualified_name, part admin.partition)
+CREATE FUNCTION admin.create_partition(tabname admin.qualified_name, tplname admin.qualified_name, part admin.partition)
 RETURNS VOID
 LANGUAGE plpgsql
 AS
@@ -307,11 +290,18 @@ $$
 DECLARE
 	partname		admin.qualified_name;
 	partbound		admin.partition_bound;
-	partstring		TEXT;
+	tbpartkeyspec	admin.partition_keyspec;
+	tbpartnames		admin.qualified_name[];
+	tbpartname		admin.qualified_name;
+	tbname			admin.qualified_name;
+	tbbound			admin.partition_bound;
+	tbpart			admin.partition;
+	tbparts			admin.partition[];
 	cmd				TEXT;
 
 BEGIN
     RAISE DEBUG 'admin.create_partition tabname %',tabname;
+    RAISE DEBUG 'admin.create_partition tplname %',tplname;
 	RAISE DEBUG 'admin.create_partition part %',part;
 	
 	partname=part.partname;
@@ -320,18 +310,50 @@ BEGIN
 	partbound=part.partbound;
 	RAISE DEBUG 'admin.create_partition partbound %',partbound;
 
-	partstring=admin.partition_bound_to_string(partbound);
-
-	RAISE DEBUG 'admin.create_partition partstring %',partstring;
-
-	IF (admin.table_exists(partname))
+	IF (admin.table_exists(partname) IS NOT TRUE)
 	THEN
-		PERFORM admin.attach_partition(tabname,partname,partbound);
-	ELSE
-		cmd=format('CREATE TABLE %I.%I PARTITION OF %I.%I %s',partname.nsname,partname.relname,tabname.nsname,tabname.relname,partstring);
-		RAISE DEBUG 'admin.create_partition cmd %',cmd;
-		EXECUTE cmd;
+		IF (tplname <> tabname)
+		THEN
+			tbpartkeyspec=admin.get_partition_keyspec(tplname);
+			tbpartnames=admin.get_table_partition_names(tplname);
+			RAISE DEBUG 'admin.create_partition tbpartnames %',tbpartnames;
+		END IF;
+		IF ((tbpartkeyspec IS NOT NULL) IS NOT FALSE)
+		THEN
+			IF ((tbpartnames IS NOT NULL) IS NOT FALSE)
+	        THEN
+				FOREACH tbpartname IN ARRAY tbpartnames
+				LOOP
+					RAISE DEBUG 'admin.create_partition tbpartname %',tbpartname;
+
+					tbbound=admin.get_partition_bound(tbpartname);
+					RAISE DEBUG 'admin.create_partition tbbound %',tbbound;
+
+					IF (tbboundi.isdefault)
+	                THEN
+                    	tbname=admin.generate_default_partition_name(tabname);
+    	            ELSE
+                    	tbname=admin.generate_partition_name(tabname);
+	                END IF;
+					RAISE DEBUG 'admin.create_partition tbname %',tbname;
+
+					tbpart=admin.make_partition(tbname,tbbound);
+					tbparts=pg_catalog.array_append(tbparts,tppart);
+				END LOOP;
+				RAISE DEBUG 'admin.create_partition admin.create_table(%,%,%,%)',partname, tplname, tbpartkeyspec, tbparts;
+				PERFORM admin.create_table(partname, tplname, tbpartkeyspec, tbparts);
+			ELSE
+				RAISE DEBUG 'admin.create_partition admin.create_table(%,%,%)',partname, tplname, tbpartkeyspec;
+				PERFORM admin.create_table(partname, tplname, tbpartkeyspec);
+			END IF;
+		ELSE
+			RAISE DEBUG 'admin.create_partition admin.create_table(%,%)',partname, tplname;
+			PERFORM admin.create_table(partname, tplname);
+		END IF;
 	END IF;
+
+	RAISE DEBUG 'admin.create_partition admin.attach_partition(%,%,%)',tabname,partname,partbound;
+	PERFORM admin.attach_partition(tabname,partname,partbound);
 END
 $$;
 
@@ -342,7 +364,14 @@ AS
 $$
 DECLARE
 	part		admin.partition;
-	
+	tbpartnames	admin.qualified_name[];
+	tbpartname	admin.qualified_name;
+	tbpart		admin.partition;
+	tbparts		admin.partition[];
+	ppname		admin.qualified_name;
+	partpart	admin.partition;
+	partparts	admin.partition[];
+
 BEGIN
     RAISE DEBUG 'admin.create_table tabname %',tabname;
     RAISE DEBUG 'admin.create_table tplname %',tplname;
@@ -356,13 +385,13 @@ BEGIN
         RAISE NOTICE 'create table %.% like %.% partition by %',tabname.nsname,tabname.relname,tplname.nsname,tplname.relname,admin.partition_keyspec_to_string(partkey);
         EXECUTE format('CREATE TABLE %I.%I (LIKE %I.%I INCLUDING ALL) PARTITION BY %s',tabname.nsname,tabname.relname,tplname.nsname,tplname.relname,admin.partition_keyspec_to_string(partkey));
 
-        IF ((parts IS NULL) IS NOT TRUE)
+		IF ((parts IS NULL) IS NOT TRUE)
         THEN
-			RAISE DEBUG 'admin.create_table parts %',parts;
+			RAISE DEBUG 'admin.create_table partparts %',parts;
             FOREACH part IN ARRAY parts
             LOOP
                 RAISE DEBUG 'admin.create_table part %',part;
-                PERFORM admin.create_partition(tabname,part);
+                PERFORM admin.create_partition(tplname,tabname,part);
             END LOOP;
         END IF;
     ELSE
