@@ -328,6 +328,7 @@ BEGIN
 		END IF;
 		IF ((tbpartkeyspec IS NOT NULL) IS NOT FALSE)
 		THEN
+			
 			IF ((tbpartnames IS NOT NULL) IS NOT FALSE)
 	        THEN
 				FOREACH tbpartname IN ARRAY tbpartnames
@@ -339,28 +340,32 @@ BEGIN
 
 					IF (tbbound.isdefault)
 	                THEN
-                    	tbname=admin.generate_default_partition_name(tabname);
+                    	tbname=admin.generate_default_partition_name(tbpartname);
     	            ELSE
-                    	tbname=admin.generate_partition_name(tabname);
+                    	tbname=admin.generate_partition_name(tbpartname);
 	                END IF;
 					RAISE DEBUG 'admin.create_partition tbname %',tbname;
 
 					tbpart=admin.make_partition(tbname,tbbound);
 					tbparts=pg_catalog.array_append(tbparts,tbpart);
 				END LOOP;
-				RAISE DEBUG 'admin.create_partition admin.create_table(%,%,%,%)',partname, tplname, tbpartkeyspec, tbparts;
-				PERFORM admin.create_table(partname, tplname, tbpartkeyspec, VARIADIC tbparts);
+				RAISE DEBUG 'admin.create_partition admin.create_table(%,%,%,%)',partname, tbpartnames[1], tbpartkeyspec, tbparts;
+				RAISE NOTICE 'create partition % of table % partitionned by % over %',partname::TEXT,tabname::TEXT,lower(admin.partition_keyspec_to_string(tbpartkeyspec)), pg_catalog.array_to_string(tbpartnames::TEXT[],',');
+				PERFORM admin.create_table(partname, tbpartnames[1], tbpartkeyspec, VARIADIC tbparts);
 			ELSE
 				RAISE DEBUG 'admin.create_partition admin.create_table(%,%,%)',partname, tplname, tbpartkeyspec;
+				RAISE NOTICE 'create partition % of table % partitionned by %',partname::TEXT,tabname::TEXT,lower(admin.partition_keyspec_to_string(tbpartkeyspec));
 				PERFORM admin.create_table(partname, tplname, tbpartkeyspec);
 			END IF;
 		ELSE
 			RAISE DEBUG 'admin.create_partition admin.create_table(%,%)',partname, tplname;
+			RAISE NOTICE 'create partition % of table %',partname::TEXT,tabname::TEXT;
 			PERFORM admin.create_table(partname, tplname);
 		END IF;
 	END IF;
 
 	RAISE DEBUG 'admin.create_partition admin.attach_partition(%,%,%)',tabname,partname,partbound;
+	RAISE NOTICE 'attach partition % of table % %',partname::TEXT,tabname::TEXT,lower(admin.partition_bound_to_string(partbound));
 	PERFORM admin.attach_partition(tabname,partname,partbound);
 END
 $$;
@@ -379,26 +384,31 @@ BEGIN
     RAISE DEBUG 'admin.create_table partkey %',partkey;
     RAISE DEBUG 'admin.create_table parts %',parts;
 
-    IF ((partkey IS NULL) IS NOT TRUE)
-    THEN
-        RAISE DEBUG 'admin.create_table partkey %',partkey;
-
-        RAISE NOTICE 'admin.create_table CREATE TABLE %.% (LIKE %.% INCLUDING ALL) PARTITION BY %',tabname.nsname,tabname.relname,tplname.nsname,tplname.relname,admin.partition_keyspec_to_string(partkey);
-        EXECUTE format('CREATE TABLE %I.%I (LIKE %I.%I INCLUDING ALL) PARTITION BY %s',tabname.nsname,tabname.relname,tplname.nsname,tplname.relname,admin.partition_keyspec_to_string(partkey));
-
-		IF ((parts IS NULL) IS NOT TRUE)
-        THEN
-			RAISE DEBUG 'admin.create_table parts %',parts;
-            FOREACH part IN ARRAY parts
-            LOOP
-                RAISE DEBUG 'admin.create_table part %',part;
-                PERFORM admin.create_partition(tabname,tplname,part);
-            END LOOP;
-        END IF;
-    ELSE
-        RAISE NOTICE 'CREATE TABLE %.% (LIKE %.% INCLUDING ALL)',tabname.nsname,tabname.relname,tplname.nsname,tplname.relname;
-        EXECUTE format('CREATE TABLE %I.%I (LIKE %I.%I INCLUDING ALL)',tabname.nsname,tabname.relname,tplname.nsname,tplname.relname);
-    END IF;
+	IF (admin.table_exists(tabname))
+	THEN
+		RETURN;
+	ELSE
+	    IF ((partkey IS NULL) IS NOT TRUE)
+	    THEN
+	        RAISE DEBUG 'admin.create_table partkey %',partkey;
+	
+	        RAISE NOTICE 'create table % like % including all partition by %',tabname::TEXT,tplname::TEXT,admin.partition_keyspec_to_string(partkey);
+	        EXECUTE format('CREATE TABLE %I.%I (LIKE %I.%I INCLUDING ALL) PARTITION BY %s',tabname.nsname,tabname.relname,tplname.nsname,tplname.relname,admin.partition_keyspec_to_string(partkey));
+	
+			IF ((parts IS NULL) IS NOT TRUE)
+	        THEN
+				RAISE DEBUG 'admin.create_table parts %',parts;
+	            FOREACH part IN ARRAY parts
+	            LOOP
+	                RAISE DEBUG 'admin.create_table part %',part;
+	                PERFORM admin.create_partition(tabname,tplname,part);
+	            END LOOP;
+	        END IF;
+	    ELSE
+	        RAISE NOTICE 'create table % like % including all',tabname::TEXT,tplname::TEXT;
+	        EXECUTE format('CREATE TABLE %I.%I (LIKE %I.%I INCLUDING ALL)',tabname.nsname,tabname.relname,tplname.nsname,tplname.relname);
+	    END IF;
+	END IF;
 END
 $$;
 

@@ -40,7 +40,7 @@ SELECT 'admin.get_column_info',*
 FROM admin.get_column_info(admin.make_qualname('public','tb'),VARIADIC ARRAY['region_id','id']::TEXT[]);
 
 SELECT 'admin.rowcount',*
-FROM admin.rowcount(admin.string_to_qualname('public.tb'),true);
+FROM admin.rowcount(admin.make_qualname('public','tb'),true);
 
 SET client_min_messages = notice;
 DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;;

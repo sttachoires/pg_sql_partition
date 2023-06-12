@@ -41,6 +41,8 @@ CREATE TYPE admin.qualified_name AS (
 CREATE FUNCTION admin.make_qualname(ns TEXT, rel TEXT)
 RETURNS admin.qualified_name
 LANGUAGE plpgsql
+STRICT
+STABLE
 AS
 $$
 DECLARE
@@ -62,16 +64,25 @@ $$;
 CREATE FUNCTION admin.qualname_to_string(qualname admin.qualified_name)
 RETURNS TEXT
 LANGUAGE plpgsql
+STRICT
+STABLE
 AS
 $$
 BEGIN
-	RETURN format('%I.%I',(qualname).nsname,(qualname).relname);
+	IF ((qualname IS NOT NULL) AND ((qualname.nsname <> '') IS TRUE) OR ((qualname.relname <> '') IS TRUE))
+	THEN
+		RETURN format('%I.%I',(qualname).nsname,(qualname).relname);
+	ELSE
+		RETURN NULL;
+	END IF;
 END
 $$;
 
 CREATE FUNCTION admin.string_to_qualname(tabqname TEXT)
 RETURNS admin.qualified_name
 LANGUAGE plpgsql
+STRICT
+STABLE
 AS
 $$
 DECLARE
@@ -118,6 +129,7 @@ $$;
 CREATE FUNCTION admin.generate_table_name(nsname TEXT, prefix TEXT='t_')
 RETURNS admin.qualified_name
 LANGUAGE plpgsql
+STRICT
 AS
 $$
 DECLARE
@@ -126,8 +138,13 @@ DECLARE
 	name		admin.qualified_name;
 
 BEGIN
+	RAISE DEBUG 'admin.generate_table_name nsname %',nsname;
     RAISE DEBUG 'admin.generate_table_name prefix %',prefix;
 
+	IF ((nsname <> '') IS NOT TRUE)
+	THEN
+		RETURN NULL;
+	END IF;
 	rndm=(SELECT md5(random()::text));
 	tabname=concat(prefix,pg_catalog.substr(rndm,1,3));
 	name=admin.make_qualname(nsname,tabname);
@@ -146,6 +163,7 @@ $$;
 CREATE FUNCTION admin.generate_partition_name(tabname admin.qualified_name, prefix TEXT='_')
 RETURNS admin.qualified_name
 LANGUAGE plpgsql
+STRICT
 AS
 $$
 DECLARE
@@ -156,6 +174,10 @@ DECLARE
 BEGIN
     RAISE DEBUG 'admin.generate_partition_name tabname % prefix %',tabname,prefix;
 
+	IF (((tabname.nsname <> '') IS NOT TRUE) AND ((tabname.relname <> '') IS NOT TRUE))
+	THEN
+		RETURN NULL;
+	END IF;
     tbname=concat(tabname.relname,prefix,iter);
     name=admin.make_qualname(tabname.nsname,tbname);
 
@@ -173,6 +195,7 @@ $$;
 CREATE FUNCTION admin.generate_default_partition_name(tabname admin.qualified_name, prefix TEXT='_d')
 RETURNS admin.qualified_name
 LANGUAGE plpgsql
+STRICT
 AS
 $$
 DECLARE
@@ -183,6 +206,10 @@ DECLARE
 BEGIN
     RAISE DEBUG 'admin.generate_default_partition_name tabname % prefix %',tabname,prefix;
 
+	IF (((tabname.nsname <> '') IS NOT TRUE) AND ((tabname.relname <> '') IS NOT TRUE))
+	THEN
+		RETURN NULL;
+	END IF;
     tbname=concat(tabname.relname,prefix);
     name=admin.make_qualname(tabname.nsname,tbname);
 
@@ -207,6 +234,7 @@ CREATE CAST (admin.qualified_name AS TEXT)
 CREATE FUNCTION admin.table_exists(tabqname admin.qualified_name)
 RETURNS BOOLEAN
 LANGUAGE plpgsql
+STRICT
 AS
 $$
 DECLARE
@@ -214,6 +242,10 @@ DECLARE
 BEGIN
 	RAISE DEBUG 'SELECT TRUE FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace ns ON ns.oid = c.relnamespace WHERE ns.nspname = ''%'' AND c.relname = ''%''',(tabqname).nsname,(tabqname).relname;
 	
+	IF (((tabqname.nsname <> '') IS NOT TRUE) AND ((tabqname.relname <> '') IS NOT TRUE))
+	THEN
+		RETURN NULL;
+	END IF;
 	EXECUTE format('SELECT TRUE FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace ns ON ns.oid = c.relnamespace WHERE ns.nspname = ''%s'' AND c.relname = ''%s''',(tabqname).nsname,(tabqname).relname) INTO tblexists;
 
 	RAISE DEBUG 'admin.table_exists tblexists ''%''',tblexists;
@@ -229,11 +261,16 @@ $$;
 CREATE FUNCTION admin.column_exists(tabqname admin.qualified_name, col TEXT)
 RETURNS BOOLEAN
 LANGUAGE plpgsql
+STRICT
 AS
 $$
 DECLARE
 	colexists	BOOLEAN=false;
 BEGIN
+	IF (((tabqname.nsname <> '') IS NOT TRUE) AND ((tabqname.relname <> '') IS NOT TRUE) AND ((col <> '') IS NOT TRUE))
+	THEN
+		RETURN NULL;
+	END IF;
 	IF (admin.table_exists(tabqname))
 	THEN
 	    EXECUTE format('SELECT TRUE FROM pg_catalog.pg_attribute a WHERE a.attrelid = ''%I.%I''::regclass AND a.attname = ''%s'' AND NOT a.attisdropped',
@@ -302,7 +339,6 @@ DECLARE
 	lc bigint;
 
 BEGIN
-    
 	IF ( ponly )
     THEN
 	    EXECUTE format('SELECT count(*) FROM ONLY %s',admin.qualname_to_string(tabqname)) INTO lc;

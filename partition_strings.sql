@@ -187,6 +187,10 @@ BEGIN
 	RAISE DEBUG 'admin.string_to_list_partition_bound bs %',bs;
 
 	--cmd=format('SELECT * FROM admin.make_list_bound((%s)::%s)',bs,(pkeyspec).coltypes[1]);
+	IF ((pkeyspec.coltypes[1] <> '' ) IS NOT TRUE)
+	THEN
+		pkeyspec.coltypes[1]=pg_catalog.pg_typeof((pg_catalog.string_to_array(bs,','))[1]);
+	END IF;
 	cmd=format('SELECT admin.make_list_bound(ARRAY[%s]::%s[])',bs,(pkeyspec).coltypes[1]);
 	RAISE DEBUG 'admin.string_to_list_partition_bound cmd %',cmd;
 	EXECUTE cmd INTO bound.listbound;
