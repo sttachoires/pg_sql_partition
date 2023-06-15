@@ -2,7 +2,7 @@
 -- Complex bound operations
 --
 
-\i partition_opebounds.sql
+\i partition_opeautobounds.sql
 
 CREATE FUNCTION admin.merge_list_partition_bounds(VARIADIC boundlist admin.partition_bound[])
 RETURNS admin.partition_bound
