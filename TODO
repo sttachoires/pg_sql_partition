@@ -26,18 +26,17 @@
 #voir les autres références
 
 
-Revoir les create table et partition
+#Revoir les create table et partition
 	#create_partition doit prendre un admin.partition
 	#corriger tout pour que les check passent
 	#voir get_partition et get_partitions...
-	!faire un get_table_partitions qui retourne toutes les admin.partition de la table
+	!deja les bounds! faire un get_table_partitions qui retourne toutes les admin.partition de la table
 	#vérifier que tout retourne bien null quand rien trouvé :)
 	#ajouter les creations de sous partition dans create_partition à partir du template
-	!checker le sous partitionnement quelque part, is_table_partitionned ?
+	!pas besoin, boundlist a null! checker le sous partitionnement quelque part, is_table_partitionned ?
 
 AUTOMATIC
 ---------
-CREATE TABLE tb PARTITION BY HASH(column) OVER AUTOMATIC MODULUS integer
 	#generate_hash_partition_bounds(modulus INT)
 	#generate_list_partition_bounds(list ANYCOMPATIBLEARRAY)
 	#generate_range_partition_bounds(interval INTERVAL, center TIMESTAMP WITH TIME ZONE, back INT=0, ahead INT=0)
@@ -54,35 +53,39 @@ CREATE TABLE tb PARTITION BY HASH(column) OVER AUTOMATIC MODULUS integer
 	create_automatic_table(tabname admin.qualified_name, tplname admin.qualified_name,
 	create_automatic_table_like(tabname TEXT, tplname TEXT, keyspec1 TEXT, partspec1 TEXT,...);
 	
+CREATE TABLE tb PARTITION BY HASH(column) OVER AUTOMATIC MODULUS integer
 CREATE TABLE tb PARTITION BY LIST(column) OVER AUTOMATIC LIST (list) [WITH DEFAULT]
 CREATE TABLE tb PARTITION BY LIST(column) OVER AUTOMATIC QUERY (query) [WITH DEFAULT]
 CREATE TABLE tb PARTITION BY RANGE(columns) OVER AUTOMATIC [REVERSE] INTERVAL interval CENTER AT {values|(query)} BACK integer AHEAD integer [WITH DEFAULT]
 CREATE TABLE tb PARTITION BY RANGE(columns) OVER AUTOMATIC BOUNDS {list|(query)} [FROM (frombound)] [TO (tobound)] CENTER AT {values|(query)} BACK integer AHEAD integer [WITH DEFAULT]
 
+
 CREATE TABLE tb PARTITION BY partition_strategy1 OVER AUTOMATIC partition_bound_definition1 PARTITION BY partition_strategy2 OVER AUTOMATIC partition_bound_definition2 ...
 
 CONCURENTLY
 -----------
+https://engineering.workable.com/postgres-live-partitioning-of-existing-tables-15a99c16b291
 #Attach concurently
-	add check constraint for partition and parent table, even default
-	attach partition
-	remove check constraint that where added (not those of the parent)
+	#add check constraint for partition and parent table, even default
+	#attach partition
+	#remove check constraint that where added (not those of the parent)
 	
 #Move rows
-
-#Move rows concurently
 
 Create façace for merging partitionned top table
 	Create view for merging partitionned table unattached partition if not already exists, AND default
 	Create insert merge trigger if not already exists
 	Create update merge trigger if not already exists
 	Create delete merge trigger if not already exists
-	
+
+Do the job (merge, split, whatever)
+
 Remove partitionned top table façace
 	Remove delete trigger if exists
 	Remove update trigger if exists
 	Remove insert trigger if exists
 	Drop view 
+
 	
 ALTER TABLE tb MERGE PARTITIONS part1,... INTO part CONCURENTLY
 admin.alter_table_merge_partitions_concurently('schema.table', 'schema.destinationname','schema.partitionname1',...)
