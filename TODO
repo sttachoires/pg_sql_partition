@@ -1,0 +1,313 @@
+#ALTER TABLE tb PARTITION BY partspec
+#admin.alter_table_partition_by('schema.table', 'strategy', column1,...)
+
+#ALTER TABLE tb MERGE PARTITIONS part1,... INTO part
+#admin.alter_table_merge_partitions('schema.table', 'schema.destinationname','schema.partitionname1',...)
+
+#ALTER TABLE tb UNPARTITION
+#admin.alter_table_unpartition('schema.table')
+
+#ALTER TABLE tb SPLIT PARTITION part INTO part1 FOR VALUES partbound1,..
+#admin.alter_table_split_partition('schema.table', 'schema.sourcename', 'partname1 [FOR VALUES] partbound1',...)
+
+#CREATE TABLE tb PARTITION BY parspec OVER part1 FOR VALUES partbound1,...
+#create_table_like('schema.table','schema.templatetable','strategy(columns)','partname1 [FOR VALUES] partbound1',...);
+
+#Revoir les appels
+	#generate_partition_name(tabname)
+	#revoir default qualifer pour hash table
+	#rename_table(tabname,newname)
+	#create_table_like
+	#copy_rows(srcname,dstname,qualifier=null)
+	#move_rows(srcname,dstname,qualifier=null)
+	
+#switch tables
+#!!! FOREIGN KEY lors des renames !!!!
+#voir les autres références
+
+
+Revoir les create table et partition
+	#create_partition doit prendre un admin.partition
+	#corriger tout pour que les check passent
+	#voir get_partition et get_partitions...
+	!faire un get_table_partitions qui retourne toutes les admin.partition de la table
+	#vérifier que tout retourne bien null quand rien trouvé :)
+	#ajouter les creations de sous partition dans create_partition à partir du template
+	!checker le sous partitionnement quelque part, is_table_partitionned ?
+
+AUTOMATIC
+---------
+CREATE TABLE tb PARTITION BY HASH(column) OVER AUTOMATIC MODULUS integer
+	#generate_hash_partition_bounds(modulus INT)
+	#generate_list_partition_bounds(list ANYCOMPATIBLEARRAY)
+	#generate_range_partition_bounds(interval INTERVAL, center TIMESTAMP WITH TIME ZONE, back INT=0, ahead INT=0)
+	#generate_range_partition_bounds(bounds ANYARRAY)
+	
+	
+	#generate_partition_bounds(keyspec admin.partition_keyspec, modulus INT, with_default BOOLEAN=true)
+	generate_partition_bounds(keyspec admin.partition_keyspec, boundspec ANYARRAY, with_default BOOLEAN=true)
+	generate_partition_bounds(keyspec admin.partition_keyspec, interval INTERVAL, center TIMESTAMP WITH TIME ZONE, back INT=0, ahead INT=0, with_default BOOLEAN=true)
+	
+	?generate_partitions(tabname admin.qualified_name,modulus INT)
+	?generate_partitions(tabname admin.qualified_name,boundlist ANYARRAY)
+	?generate_partitions(tabname admin.qualified_name,interval INTERVAL, center TIMESTAMP WITH TIME ZONE, back INT=0, ahead INT=0)
+	create_automatic_table(tabname admin.qualified_name, tplname admin.qualified_name,
+	create_automatic_table_like(tabname TEXT, tplname TEXT, keyspec1 TEXT, partspec1 TEXT,...);
+	
+CREATE TABLE tb PARTITION BY LIST(column) OVER AUTOMATIC LIST (list) [WITH DEFAULT]
+CREATE TABLE tb PARTITION BY LIST(column) OVER AUTOMATIC QUERY (query) [WITH DEFAULT]
+CREATE TABLE tb PARTITION BY RANGE(columns) OVER AUTOMATIC [REVERSE] INTERVAL interval CENTER AT {values|(query)} BACK integer AHEAD integer [WITH DEFAULT]
+CREATE TABLE tb PARTITION BY RANGE(columns) OVER AUTOMATIC BOUNDS {list|(query)} [FROM (frombound)] [TO (tobound)] CENTER AT {values|(query)} BACK integer AHEAD integer [WITH DEFAULT]
+
+CREATE TABLE tb PARTITION BY partition_strategy1 OVER AUTOMATIC partition_bound_definition1 PARTITION BY partition_strategy2 OVER AUTOMATIC partition_bound_definition2 ...
+
+CONCURENTLY
+-----------
+#Attach concurently
+	add check constraint for partition and parent table, even default
+	attach partition
+	remove check constraint that where added (not those of the parent)
+	
+#Move rows
+
+#Move rows concurently
+
+Create façace for merging partitionned top table
+	Create view for merging partitionned table unattached partition if not already exists, AND default
+	Create insert merge trigger if not already exists
+	Create update merge trigger if not already exists
+	Create delete merge trigger if not already exists
+	
+Remove partitionned top table façace
+	Remove delete trigger if exists
+	Remove update trigger if exists
+	Remove insert trigger if exists
+	Drop view 
+	
+ALTER TABLE tb MERGE PARTITIONS part1,... INTO part CONCURENTLY
+admin.alter_table_merge_partitions_concurently('schema.table', 'schema.destinationname','schema.partitionname1',...)
+
+ALTER TABLE tb UNPARTITION CONCURENTLY
+admin.alter_table_unpartition_concurently('schema.table')
+
+ALTER TABLE tb SPLIT PARTITION part INTO part1 FOR VALUES partbound1,... CONCURENTLY
+admin.alter_table_split_partition_concurently('schema.table', 'schema.sourcename', 'partname1 [FOR VALUES] partbound1',...)
+
+---------------
+
+ALTER TABLE tb PARTITION BY parspec OVER part1 FOR VALUES partbound1,...,partn FOR VALUES partboundn
+ALTER TABLE tb SPLIT PARTITION part INTO AUTOMATIC MODULUS integer
+ALTER TABLE tb SPLIT PARTITION part INTO AUTOMATIC [REVERSE] INTERVAL interval CENTER AT {values|(query)} KEEP {integer|ALL} {DROP|DETACH} DEFAULT qualifier AHEAD integer [WITH DEFAULT]
+ALTER TABLE tb SPLIT PARTITION part INTO AUTOMATIC BOUNDS FROM from TO to CENTER AT {values|(query)} KEEP {integer|ALL} {DROP|DETACH} DEFAULT qualifier AHEAD integer [WITH DEFAULT]
+ALTER TABLE tb SPLIT PARTITION part INTO AUTOMATIC LIST {list|(query)}
+ALTER TABLE tb PARTITION BY HASH(column) OVER AUTOMATIC MODULUS integer
+ALTER TABLE tb PARTITION BY RANGE(columns) OVER AUTOMATIC [REVERSE] INTERVAL interval CENTER AT {values|(query)} KEEP {integer|ALL} {DROP|DETACH} DEFAULT {value|(query)} AHEAD integer [WITH DEFAULT]
+ALTER TABLE tb PARTITION BY RANGE(columns) OVER AUTOMATIC BOUNDS FROM from TO to  CENTER AT {values|(query)} KEEP {integer|ALL} {DROP|DETACH} DEFAULT {value|(query)} AHEAD integer [WITH DEFAULT]
+ALTER TABLE tb PARTITION BY LIST(column) OVER AUTOMATIC LIST {list|(query)} [WITH DEFAULT]
+
+* CONCURENTLY
+
+
+2
+0 1                                0     1
+0 0                               1M0
+0 1                               2M0   2M1
+
+3
+0 1 2                              0     1     2
+0 0 0                             1M0
+0 1 2                             3M0   3M1   3M2
+
+4 2x2
+0 1 2 3                            0     1     2     3
+0 0 0 0                           1M0
+0 1 0 1                           2M0   2M1
+0 1 2 1                           4M0   2M1   4M2
+0 1 2 3                           4M0   4M1   4M2   4M3
+
+5
+0 1 2 3 4                          0     1     2     3     4
+0 0 0 0 0                         1M0
+0 1 2 3 4                         5M0   5M1   5M2   5M3   5M4
+
+6 3x2
+0 1 2 3 4 5                        0     1     2     3     4     5
+0 0 0 0 0 0                       1M0
+0 1 2 0 1 2                       3M0   3M1   3M2
+0 1 2 3 1 2                       6M0   3M1   3M2   6M3
+0 1 2 3 4 2                       6M0   6M1   3M2   6M3   6M4
+0 1 2 3 4 5                       6M0   6M1   6M2   6M3   6M4   6M5
+
+7
+0 1 2 3 4 5 6                      0     1     2     3     4     5     6
+0 0 0 0 0 0 0                     1M0
+0 1 2 3 4 5 6                     7M0   7M1   7M2   7M3   7M4   7M5   7M6
+
+8 2x2x2
+0 1 2 3 4 5 6 7                    0     1     2     3     4     5     6     7
+0 0 0 0 0 0 0 0                   1M0
+0 1 0 1 0 1 0 1                   2M0   2M1
+0 1 2 1 0 1 2 1                   4M0   2M1   4M2
+0 1 2 3 0 1 2 3                   4M0   4M1   4M2   4M3
+0 1 2 3 4 1 2 3                   8M0   4M1   4M2   4M3   8M4
+0 1 2 3 4 5 2 3                   8M0   8M1   4M2   4M3   8M4   8M5
+0 1 2 3 4 5 6 3                   8M0   8M1   8M2   4M3   8M4   8M5   8M6
+0 1 2 3 4 5 6 7                   8M0   8M1   8M2   8M3   8M4   8M5   8M6   8M7
+0 1 2 3 0 4 5 6                   4M0   8M1   8M2   8M3   8M5   8M6   8M7
+
+9 3x3
+0 1 2 3 4 5 6 7 8                  0     1     2     3     4     5     6     7     8
+0 0 0 0 0 0 0 0 0                 1M0
+0 1 2 0 1 2 0 1 2                 3M0   3M1   3M2
+0 1 2 3 1 2 4 1 2                 9M0   3M1   3M2   9M3   9M6
+0 1 2 3 5 2 4 6 2                 9M0   9M1   3M2   9M3   9M6   9M4   9M7
+0 1 2 3 5 7 4 6 8                 9M0   9M1   9M2   9M3   9M6   9M4   9M7   9M5   9M8
+0 1 2 0 3 5 0 4 6                 3M0   9M1   9M2   9M4   9M7   9M5   9M8
+
+10 5x2
+0 1 2 3 4 5 6 7 8 9                0     1     2     3     4     5     6     7     8     9
+0 0 0 0 0 0 0 0 0 0               1M0
+0 1 2 3 4 0 1 2 3 4               5M0   5M1   5M2   5M3   5M4
+0 1 2 3 4 5 1 2 3 4              10M0   5M1   5M2   5M3   5M4  10M5
+0 1 2 3 4 5 6 2 3 4              10M0  10M1   5M2   5M3   5M4  10M5  10M6
+0 1 2 3 4 5 6 7 3 4              10M0  10M1  10M2   5M3   5M4  10M5  10M6  10M7
+0 1 2 3 4 5 6 7 8 4              10M0  10M1  10M2  10M3   5M4  10M5  10M6  10M7  10M8
+0 1 2 3 4 5 6 7 8 9              10M0  10M1  10M2  10M3  10M4  10M5  10M6  10M7  10M8  10M9
+
+11
+0 1 2 3 4 5 6 7 8 9 A              0     1     2     3     4     5     6     7     8     9     A
+0 0 0 0 0 0 0 0 0 0 0             1M0
+0 1 2 3 4 5 6 7 8 9 A            11M0  11M1  11M2  11M3  11M4  11M5  11M6  11M7  11M8  11M9  11M10
+
+12 3x2x2
+0 1 2 3 4 5 6 7 8 9 A B            0     1     2     3     4     5     6     7     8     9     A     B
+0 0 0 0 0 0 0 0 0 0 0 0           1M0
+0 1 2 0 1 2 0 1 2 0 1 2           3M0   3M1   3M2
+0 1 2 3 1 2 0 1 2 3 1 2           6M0   3M1   3M2   6M3
+0 1 2 3 4 2 0 1 2 3 4 2           6M0   6M1   3M2   6M3   6M4
+0 1 2 3 4 5 0 1 2 3 4 5           6M0   6M1   6M2   6M3   6M4   6M5
+0 1 2 3 4 5 6 1 2 3 4 5          12M0   6M1   6M2   6M3   6M4   6M5  12M6
+0 1 2 3 4 5 6 7 2 3 4 5          12M0  12M1   6M2   6M3   6M4   6M5  12M6  12M7
+0 1 2 3 4 5 6 7 8 3 4 5          12M0  12M1  12M2   6M3   6M4   6M5  12M6  12M7  12M8
+0 1 2 3 4 5 6 7 8 9 4 5          12M0  12M1  12M2  12M3   6M4   6M5  12M6  12M7  12M8  12M9
+0 1 2 3 4 5 6 7 8 9 A 5          12M0  12M1  12M2  12M3  12M4   6M5  12M6  12M7  12M8  12M9  12M10
+0 1 2 3 4 5 6 7 8 9 A B          12M0  12M1  12M2  12M3  12M4  12M5  12M6  12M7  12M8  12M9  12M10  12M11
+0 1 2 3 4 5 0 6 7 8 9 A           6M0  12M1  12M2  12M3  12M4  12M5  12M7  12M8  12M9  12M10 12M11
+0 1 2 3 4 5 6 7 8 9 A B          12M0  12M1  12M2  12M3  12M4  12M5  12M6  12M7  12M8  12M9  12M10  12M11
+0 1 2 3 0 4 5 6 0 7 8 9           4M0  12M1  12M2  12M3  12M5  12M6  12M7  12M9  12M10 12M11
+0 1 2 3 4 5 6 7 8 9 A B          12M0  12M1  12M2  12M3  12M4  12M5  12M6  12M7  12M8  12M9  12M10  12M11
+0 1 2 3 1 4 5 1 6 7 1 8          12M0   4M1  12M2  12M3  12M5  12M6  12M8  12M9  12M11
+0 1 2 3 4 5 6 7 8 9 A B          12M0  12M1  12M2  12M3  12M4  12M5  12M6  12M7  12M8  12M9  12M10  12M11
+0 1 2 3 4 5 3 6 7 3 8 9          12M0  12M1  12M2   4M3  12M4  12M5  12M7  12M8  12M10 12M11
+
+0 1 2 3 4 5 6 7 8 9 A B          12M0  12M1  12M2  12M3  12M4  12M5  12M6  12M7  12M8  12M9  12M10  12M11
+0 1 2 3 4 5 0 1 6 7 8 9           6M0   6M1  12M2  12M3  12M4  12M5  12M8  12M9  12M10  12M11
+0 1 2       0 1 2                 6M0   6M1   6M2  12M3
+
+13
+0 1 2 3 4 5 6 7 8 9 A B C          0     1     2     3     4     5     6     7     8     9     A     B
+0 0 0 0 0 0 0 0 0 0 0 0 0         1M0
+0 1 2 3 4 5 6 7 8 9 A B C        13M0  13M1  13M2  13M3  13M4  13M5  13M6  13M7  13M8  13M9  13M10 13M11
+
+14 7x2
+0 1 2 3 4 5 6 7 8 9 A B C D        0     1     2     3     4     5     6     7     8     9     A     B     C     D
+0 0 0 0 0 0 0 0 0 0 0 0 0 0       1M0
+0 1 2 3 4 5 6 0 1 2 3 4 5 6       7M0   7M1   7M2   7M3   7M4   7M5   7M6
+0 1 2 3 4 5 6 7 1 2 3 4 5 6      14M0   7M1   7M2   7M3   7M4   7M5   7M6  14M7
+0 1 2 3 4 5 6 7 8 2 3 4 5 6      14M0  14M1   7M2   7M3   7M4   7M5   7M6  14M7  14M8
+0 1 2 3 4 5 6 7 8 9 3 4 5 6      14M0  14M1  14M2   7M3   7M4   7M5   7M6  14M7  14M8  14M9
+0 1 2 3 4 5 6 7 8 9 A 4 5 6      14M0  14M1  14M2  14M3   7M4   7M5   7M6  14M7  14M8  14M9  14M10
+0 1 2 3 4 5 6 7 8 9 A B 5 6      14M0  14M1  14M2  14M3  14M4   7M5   7M6  14M7  14M8  14M9  14M10 14M11 
+0 1 2 3 4 5 6 7 8 9 A B C 6      14M0  14M1  14M2  14M3  14M4  14M5   7M6  14M7  14M8  14M9  14M10 14M11 14M12
+0 1 2 3 4 5 6 7 8 9 A B C D      14M0  14M1  14M2  14M3  14M4  14M5  14M6  14M7  14M8  14M9  14M10 14M11 14M12 14M13
+
+15 5x3
+0 1 2 3 4 5 6 7 8 9 A B C D E      0     1     2     3     4     5     6     7     8     9     A     B     C     D     E
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0     1M0
+0 1 2 3 4 0 1 2 3 4 0 1 2 3 4     5M0   5M1   5M2   5M3   5M4
+0 1 2 3 4 5 1 2 3 4 6 1 2 3 4    15M0   5M1   5M2   5M3   5M4  15M5  15M10
+0 1 2 3 4 5 7 2 3 4 6 8 2 3 4    15M0  15M1   5M2   5M3   5M4  15M5  15M10 15M6  15M11
+0 1 2 3 4 5 7 9 3 4 6 8 A 3 4    15M0  15M1  15M2   5M3   5M4  15M5  15M10 15M6  15M11 15M7  15M12
+0 1 2 3 4 5 7 9 B 4 6 8 A C 4    15M0  15M1  15M2  15M3   5M4  15M5  15M10 15M6  15M11 15M7  15M12 15M8  15M13
+0 1 2 3 4 5 7 9 B D 6 8 A C E    15M0  15M1  15M2  15M3  15M4  15M5  15M10 15M6  15M11 15M7  15M12 15M8  15M13 15M9  15M14
+
+16 2x2x2x2
+0 1 2 3 4 5 6 7 8 9 A B C D E F    0     1     2     3     4     5     6     7     8     9     A     B     C     D     E     F
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0   1M0
+0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1   2M0   2M1
+0 1 2 1 0 1 2 1 0 1 2 1 0 1 2 1   4M0   2M1   4M2
+0 1 2 3 0 1 2 3 0 1 2 3 0 1 2 3   4M0   4M1   4M2   4M3
+0 1 2 3 4 1 2 3 0 1 2 3 4 1 2 3   8M0   4M1   4M2   4M3   8M4
+0 1 2 3 4 5 2 3 0 1 2 3 4 5 2 3   8M0   8M1   4M2   4M3   8M4   8M5
+0 1 2 3 4 5 6 3 0 1 2 3 4 5 6 3   8M0   8M1   8M2   4M3   8M4   8M5   8M6
+0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7   8M0   8M1   8M2   8M3   8M4   8M5   8M6   8M7
+0 1 2 3 4 5 6 7 8 1 2 3 4 5 6 7  16M0   8M1   8M2   8M3   8M4   8M5   8M6   8M7  16M8
+0 1 2 3 4 5 6 7 8 9 2 3 4 5 6 7  16M0  16M1   8M2   8M3   8M4   8M5   8M6   8M7  16M8  16M9
+0 1 2 3 4 5 6 7 8 9 A 3 4 5 6 7  16M0  16M1  16M2   8M3   8M4   8M5   8M6   8M7  16M8  16M9  16M10
+0 1 2 3 4 5 6 7 8 9 A B 4 5 6 7  16M0  16M1  16M2  16M3   8M4   8M5   8M6   8M7  16M8  16M9  16M10 16M11
+0 1 2 3 4 5 6 7 8 9 A B C 5 6 7  16M0  16M1  16M2  16M3  16M4   8M5   8M6   8M7  16M8  16M9  16M10 16M11 16M12
+0 1 2 3 4 5 6 7 8 9 A B C D 6 7  16M0  16M1  16M2  16M3  16M4  16M5   8M6   8M7  16M8  16M9  16M10 16M11 16M12 16M13
+0 1 2 3 4 5 6 7 8 9 A B C D E 7  16M0  16M1  16M2  16M3  16M4  16M5  16M6   8M7  16M8  16M9  16M10 16M11 16M12 16M13 16M14
+0 1 2 3 4 5 6 7 8 9 A B C D E F  16M0  16M1  16M2  16M3  16M4  16M5  16M6  16M7  16M8  16M9  16M10 16M11 16M12 16M13 16M14 16M15
+  
+
+A if tb is empty
+  1 ALTER TABLE tb PARTITION BY k(c) [WITH DEFAULT]
+    set table tb partition by k(c)
+    rename table tb to tb_temp ot tb_d
+    create table t as tb partition by k(c)
+    drop tb_temp or attach tb_d as default
+
+  2 CREATE TABLE tb PARTITION BY k(c) OVER partname {FOR VALUES parbounds|DEFAULT}
+    ALTER TABLE tb PARTITION BY k(c) OVER partname {FOR VALUES parbounds|DEFAULT}
+    a if tb not partitioned by k(c)
+      see A.1
+    b for each partname-partbounds
+      create table partname AS tb
+      attach partname to tb for partbound
+
+  4 CREATE TABLE tb PARTITION BY k(c) OVER AUTOMATIC partintervaldesc
+    ALTER TABLE tb PARTITION BY k(c) OVER AUTOMATIC partintervaldesc
+    a if tb not partitioned by k(c)
+      see A.1
+    b compute partbounds and partnames
+      RANGE (c)
+        INTERVAL
+        CENTER
+        KEEP
+          DROP
+          DETACH
+        AHEAD
+      HASH (c)
+        MODULUS
+      LIST(c)
+        (SELECT FROM WHERE)
+    c for each partnames/partbound
+      create table partname AS tb
+      attach partname to tb for partbound
+
+B if tb is not empty
+  1 set table tb partition by k(c)
+    rename table tb to tb_d
+    create table t as tb partition by k(c)
+    attach table tb_d to tb as default or all partitions
+  2 set table tb partition k(c) overterm
+     a compute partbounds and partnames
+       RANGE (c)
+       HASH (c)
+       LIST(c)
+     b compute defbounds
+        RANGE (c)
+       HASH (c)
+       LIST(c)
+     c create table partname name
+       AS tb
+       AS tb partition partk(partc) overterm
+         see A
+     d for each partbound
+       detach tb_d concurently
+       copy tb_d partbound to partname
+       detach tb_d finalize
+       attach partname to tb for partbound
+       attach tb_d to tb for defbound
+
