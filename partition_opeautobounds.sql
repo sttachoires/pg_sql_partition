@@ -37,26 +37,40 @@ AS
 $$
 DECLARE
 	iter	INT;
+	btype	TEXT;
 	bound	admin.list_bound;
 	bounds	admin.list_bound[];
 
 BEGIN
+	RAISE DEBUG 'admin.generate_list_bounds list %',list;
+
 	IF (list IS NULL)
+	THEN
+		RETURN NULL;
+	END IF;
+
+	IF (list[1] IS NULL)
 	THEN
 		RETURN NULL;
 	END IF;
 
 	IF (pg_catalog.array_ndims(list) = 1)
 	THEN
+		btype=pg_catalog.pg_typeof(list[1]);
+		RAISE DEBUG 'admin.generate_list_bounds btype %',btype;
 		FOR iter IN 1..pg_catalog.array_length(list,1)
 		LOOP
+			RAISE DEBUG 'admin.generate_list_bounds ARRAY[list[%]]=%',iter,ARRAY[list[iter]];
 			bound=admin.make_list_bound(ARRAY[list[iter]]);
 			bounds=pg_catalog.array_append(bounds,bound);
 		END LOOP;
 	ELSIF (pg_catalog.array_ndims(list) = 2)
 	THEN
+		btype=pg_catalog.pg_typeof(list[1]);
+		RAISE DEBUG 'admin.generate_list_bounds btype %',btype;
 		FOR iter IN 1..pg_catalog.array_length(list,1)
 		LOOP
+			RAISE DEBUG 'admin.generate_list_bounds list[%]=%',iter,list[iter];
 			bound=admin.make_list_bound(list[iter]);
 			bounds=pg_catalog.array_append(bounds,bound);
         END LOOP;
@@ -156,7 +170,7 @@ BEGIN
 END
 $$;
 
-CREATE FUNCTION admin.generate_range_bounds(boundlist ANYARRAY)
+CREATE FUNCTION admin.generate_range_bounds(VARIADIC boundlist ANYARRAY)
 RETURNS admin.range_bound[]
 LANGUAGE plpgsql
 AS
@@ -165,18 +179,16 @@ DECLARE
     iter        INT;
 	nbbounds	INT;
 
-    typ         TEXT;
-    upperb      TIMESTAMP WITH TIME ZONE;
-    lowerb      TIMESTAMP WITH TIME ZONE;
     bound       admin.range_bound;
     bounds      admin.range_bound[];
 
 BEGIN
+	RAISE DEBUG 'admin.generate_range_bounds boundlist %',boundlist;
+
 	nbbounds=pg_catalog.array_length(boundlist,1);
-	
-	IF (nbbounds >= 2)
+	RAISE DEBUG 'admin.generate_range_bounds nbbounds %',nbbounds;	
+	IF (nbbounds > 1)
 	THEN
-	    typ = pg_catalog.pg_typeof(boundlist[1]);
 		FOR iter IN 1..(nbbounds-1)
 		LOOP
 			bound=admin.make_range_bound(boundlist[iter],boundlist[iter+1]);
@@ -230,4 +242,69 @@ BEGIN
 END
 $$;
 
+CREATE FUNCTION admin.generate_partition_bounds(keyspec admin.partition_keyspec, boundlist ANYARRAY, withdefault BOOLEAN=true)
+RETURNS admin.partition_bound[]
+LANGUAGE plpgsql
+AS
+$$
+DECLARE
+    lbounds     admin.list_bound[];
+    lbound      admin.list_bound;
+    rbounds     admin.range_bound[];
+    rbound      admin.range_bound;
+    bound       admin.partition_bound;
+    bounds      admin.partition_bound[];
+
+BEGIN
+    IF (keyspec.strategy = 'list')
+	THEN
+		lbounds=admin.generate_list_bounds(VARIADIC boundlist);
+
+	    IF (lbounds IS NULL)
+	    THEN
+	        RETURN NULL;
+	    END IF;
+	
+	    FOREACH lbound IN ARRAY lbounds
+	    LOOP
+	        bound=admin.make_list_partition_bound(keyspec,lbound);
+	        bounds=pg_catalog.array_append(bounds,bound);
+	    END LOOP;
+	ELSIF (keyspec.strategy = 'range')
+	THEN
+		rbounds=admin.generate_range_bounds(VARIADIC boundlist);
+
+        IF (rbounds IS NULL)
+        THEN
+            RETURN NULL;
+        END IF;
+
+        FOREACH rbound IN ARRAY rbounds
+        LOOP
+            bound=admin.make_range_partition_bound(keyspec,rbound);
+            bounds=pg_catalog.array_append(bounds,bound);
+        END LOOP;
+	ELSE
+		RAISE EXCEPTION 'unhandle automatic description for %',keyspec.strategy;
+	END IF;
+
+	IF (withdefault)
+	THEN
+		bound=admin.make_default_partition_bound(keyspec);
+		bounds=pg_catalog.array_append(bounds,bound);
+	END IF;
+
+	RETURN bounds;
+END
+$$;
+
+CREATE FUNCTION admin.generate_partition_bounds(keyspec admin.partition_keyspec, interval INTERVAL, center TIMESTAMP WITH TIME ZONE, back INT=0, ahead INT=0, with_default BOOLEAN=true)
+RETURNS admin.partition_bound[]
+LANGUAGE plpgsql
+AS
+$$
+DECLARE
+BEGIN
+END
+$$;
 
