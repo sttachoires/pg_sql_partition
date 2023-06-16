@@ -184,8 +184,8 @@ FROM admin.sort_partitions(ARRAY[admin.make_partition(admin.make_qualname('publi
                                                                     admin.make_hash_bound(8,4)))
 							]);
 
+SET client_min_messages=notice;
 SELECT 'admin.check_them_all',* FROM admin.check_them_all();
 
-SET client_min_messages=notice;
 
 

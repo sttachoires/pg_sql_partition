@@ -184,6 +184,7 @@ LANGUAGE plpgsql
 AS $$
 DECLARE
 	bound	admin.partition_bound;
+
 BEGIN
 	bound.isdefault=false;
 	bound.keyspec=pkeyspec;
