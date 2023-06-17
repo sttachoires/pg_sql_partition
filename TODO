@@ -45,7 +45,7 @@ AUTOMATIC
 	
 	#generate_partition_bounds(keyspec admin.partition_keyspec, modulus INT, with_default BOOLEAN=true)
 	#generate_partition_bounds(keyspec admin.partition_keyspec, boundspec ANYARRAY, with_default BOOLEAN=true)
-	generate_partition_bounds(keyspec admin.partition_keyspec, interval INTERVAL, center TIMESTAMP WITH TIME ZONE, back INT=0, ahead INT=0, with_default BOOLEAN=true)
+	#generate_partition_bounds(keyspec admin.partition_keyspec, interval INTERVAL, center ANYELEMENT, back INT=0, ahead INT=0, with_default BOOLEAN=true)
 	
 	?generate_partitions(tabname admin.qualified_name,modulus INT)
 	?generate_partitions(tabname admin.qualified_name,boundlist ANYARRAY)

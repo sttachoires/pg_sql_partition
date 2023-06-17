@@ -17,7 +17,7 @@ DECLARE
 BEGIN
 	IF (modulus < 1)
 	THEN
-		RETURN NULL;
+		RAISE EXCEPTION 'Cannot generate % hash partitions',modulus;
 	END IF;
 
 	FOR iter IN 0..(modulus - 1)
@@ -140,11 +140,15 @@ DECLARE
     bounds      admin.range_bound[];
 
 BEGIN
-    typ = pg_catalog.pg_typeof(center);
+	RAISE DEBUG 'admin.generate_range_bounds interb % center % back % ahead %',interb,center,back,ahead;
+
+	RAISE DEBUG 'admin.generate_range_bounds pg_catalog.pg_typeof(%)=%',center,pg_catalog.pg_typeof(center);
+    typ=pg_catalog.pg_typeof(center);
+	RAISE DEBUG 'admin.generate_range_partition_bounds typ %',typ;
 
     -- bounds ahead
-    lowerb = center::TIMESTAMP WITH TIME ZONE;
-    upperb = lowerb + interb;
+    lowerb=center::TIMESTAMP WITH TIME ZONE;
+    upperb=lowerb + interb;
     FOR iter IN 1..ahead
     LOOP
         RAISE DEBUG 'admin.generate_range_partition_bounds admin.make_range_bound(%::%,%::%)',lowerb,typ,upperb,typ;
@@ -155,8 +159,8 @@ BEGIN
     END LOOP;
 
     -- bounds back
-    upperb = center::TIMESTAMP WITH TIME ZONE;
-    lowerb = upperb - interb;
+    upperb=center::TIMESTAMP WITH TIME ZONE;
+    lowerb=upperb - interb;
     FOR iter IN 1..back
     LOOP
         RAISE DEBUG 'admin.generate_range_partition_bounds admin.make_range_bound(%::%,%::%)',lowerb,typ,upperb,typ;
@@ -216,7 +220,7 @@ DECLARE
 BEGIN
 	IF (keyspec.strategy <> 'hash')
 	THEN
-		RETURN NULL;
+		RAISE EXCEPTION 'could not build % partition bounds with hash specifications',keyspec.strategy;
 	END IF;
 
 	hbounds=admin.generate_hash_bounds(modulus);
@@ -298,13 +302,43 @@ BEGIN
 END
 $$;
 
-CREATE FUNCTION admin.generate_partition_bounds(keyspec admin.partition_keyspec, interval INTERVAL, center TIMESTAMP WITH TIME ZONE, back INT=0, ahead INT=0, with_default BOOLEAN=true)
+CREATE FUNCTION admin.generate_partition_bounds(keyspec admin.partition_keyspec, inter INTERVAL, center ANYELEMENT, back INT=0, ahead INT=0, withdefault BOOLEAN=true)
 RETURNS admin.partition_bound[]
 LANGUAGE plpgsql
 AS
 $$
 DECLARE
+	rbounds		admin.range_bound[];
+	rbound		admin.range_bound;
+	bounds		admin.partition_bound[];
+	bound		admin.partition_bound;
+	
 BEGIN
+	RAISE DEBUG 'admin.generate_partition_bounds(%,%,%,%,%,%)',keyspec,inter,center,back,ahead,withdefault;
+	IF (keyspec.strategy <> 'range')
+	THEN
+		RAISE EXCEPTION 'Could not build % partition bounds with range specifications',keyspec.strategy;
+	END IF;
+	RAISE DEBUG 'admin.generate_partition_bounds admin.generate_range_bounds(%,%,%,%)',inter,center,back,ahead;
+	rbounds=admin.generate_range_bounds(inter,center,back,ahead);
+	IF (rbounds IS NULL)
+    THEN
+        RETURN NULL;
+    END IF;
+
+    FOREACH rbound IN ARRAY rbounds
+    LOOP
+        bound=admin.make_range_partition_bound(keyspec,ARRAY[rbound]);
+        bounds=pg_catalog.array_append(bounds,bound);
+    END LOOP;
+
+    IF (withdefault)
+    THEN
+        bound=admin.make_default_partition_bound(keyspec);
+        bounds=pg_catalog.array_append(bounds,bound);
+    END IF;
+
+    RETURN bounds;
 END
 $$;
 

@@ -34,6 +34,12 @@ FROM admin.generate_partition_bounds(admin.make_partition_keyspec('list',ARRAY['
 SELECT 'admin.generate_partition_bounds(admin.make_partition_keyspec(''list'',ARRAY[''id''],ARRAY[''TEXT'']), ARRAY[ARRAY[''A'',''B''],ARRAY[''B'',''C''],ARRAY[''D'',''E'']], true)',*
 FROM admin.generate_partition_bounds(admin.make_partition_keyspec('list',ARRAY['id'],ARRAY['TEXT']), ARRAY[ARRAY['A','D']::TEXT,ARRAY['B','C']::TEXT,ARRAY['D','E']::TEXT], true);
 
+SELECT 'admin.generate_partition_bounds()',*
+FROM admin.generate_partition_bounds(admin.make_partition_keyspec('range',ARRAY['stamp'],ARRAY['DATE']), '1 month'::INTERVAL, '2023-06-01'::DATE, 2, 2);
+
+SET client_min_messages = debug;
+SELECT 'admin.generate_partition_bounds()',*
+FROM admin.generate_partition_bounds(admin.make_partition_keyspec('range',ARRAY['stamp'],ARRAY['DATE']), '1 month'::INTERVAL, '2023-06-01'::DATE, 2, 2, false);
 
 SET client_min_messages=notice;
 SELECT 'admin.check_them_all',* FROM admin.check_them_all();
