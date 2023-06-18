@@ -342,3 +342,73 @@ BEGIN
 END
 $$;
 
+CREATE FUNCTION admin.string_to_automatic_hash_partition_bound(partdesc TEXT)
+RETURNS admin.partition
+LANGUAGE plpgsql
+AS
+$$
+DECLARE
+    modul       BIGINT;
+
+BEGIN
+    RAISE DEBUG 'admin.string_to_automatic_hash_partition_bound(%)',partdesc;
+END
+$$;
+
+CREATE FUNCTION admin.string_to_automatic_partitions(partname admin.qualified_name, partkey admin.partition_keyspec, partdesc TEXT)
+RETURNS admin.partition[]
+LANGUAGE plpgsql
+AS
+$$
+DECLARE
+	modul		BIGINT;
+	list		TEXT[];
+	
+	bound		admin.partition_bound;
+	bounds		admin.partition_bound[];
+	part		admin.partition;
+	parts		admin.partition[];
+
+BEGIN
+    RAISE DEBUG 'admin.string_to_automatic_partitions(%,%,%)',partname,partkey,partdesc;
+
+	-- decode partdesc
+	-- HASH(columns),	[OVER AUTOMATIC] MODULUS	integer
+	-- LIST(column),	[OVER AUTOMATIC] LIST		(list)																[WITH DEFAULT]
+	-- RANGE(columns),	[OVER AUTOMATIC] INTERVAL	intval1,...	[CENTER AT]	(values)	[BACK]	integer	[AHEAD]	integer [WITH DEFAULT]
+	-- RANGE(columns),	[OVER AUTOMATIC] STEPS		steps		[CENTER AT]	(values)	[BACK]	integer	[AHEAD]	integer [WITH DEFAULT]
+	-- RANGE(columns),	[OVER AUTOMATIC] BOUNDS		(list1)...(listn)													[WITH DEFAULT]
+
+	-- remove eventual OVER AUTOMATIC
+	-- get automatic strategy (modulus,list,interval,steps,bounds)
+
+	IF (partkey.strategy = 'hash')
+	THEN
+		-- HASH(columns),	[OVER AUTOMATIC] MODULUS	integer
+		-- check and remove MODULUS keyword
+		-- get automatic modulus params
+		-- generate automatic partition_bounds
+		
+	ELSIF (partkey.strategy = 'list')
+    THEN
+		-- LIST(column),    [OVER AUTOMATIC] LIST       (list)
+		-- check and remove LIST keyword
+		-- get automatic list params
+		-- generate automatic partition_bounds
+    ELSIF (partkey.strategy = 'range')
+    THEN
+    ELSE
+		IF (autostrat = 'INTERVAL')
+		THEN
+			-- RANGE(columns),  [OVER AUTOMATIC] INTERVAL   intval1,... [CENTER AT] (values)    [BACK]  integer [AHEAD] integer [WITH DEFAULT]
+			-- remove INTERVAL keyword
+    	-- RANGE(columns),  [OVER AUTOMATIC] STEPS      steps       [CENTER AT] (values)    [BACK]  integer [AHEAD] integer [WITH DEFAULT]
+	    -- RANGE(columns),  [OVER AUTOMATIC] BOUNDS     (list1)...(listn)
+		RAISE EXCEPTION 'unknown partition strategy %',partkey.strategy;
+	END IF;
+
+	-- search default 
+    RETURN bounds;
+END
+$$;
+

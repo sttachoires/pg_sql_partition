@@ -329,4 +329,32 @@ BEGIN
 END
 $$;
 
+CREATE FUNCTION admin.create_automatic_table_like(tab TEXT, tpl TEXT, VARIADIC partdescs)
+RETURNS VOID
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    tabname     admin.qualified_name;
+    tplname     admin.qualified_name;
+	iter		BIGINT;
+    partkey     admin.partition_keyspec=NULL;
+    part        admin.partition;
+    parts       admin.partition[]=NULL;
 
+BEGIN
+	RAISE DEBUG 'admin.create_automatic_table_like(%,%,%)',tabname,tplname,pg_catalog.array_to_string(partdescs,',');
+	tabname=admin.string_to_qualname(tab);
+	tplname=admin.string_to_qualname(tpl);
+
+	-- Decode partdesc
+	FOR iter IN pg_catalog.array_length(partdescs,1)..2 STEP 2
+	LOOP
+		partkey=admin.string_to_partkey(partdescs[iter-1]);
+		part=admin.string_to_automatic_partitions(partname,partkey,partdescs[iter]);
+		parts=admin.array_append(parts,part);
+	END LOOP;
+
+	RAISE DEBUG 'admin.create_automatic_table_like(%,%,%,%)'tabname,tplname,partkey,pg_catalog.array_to_string(parts,',');
+	PERFORM admin.create_table(tabname,tplname,partkey,VARIADIC parts);
+END
+$$;
