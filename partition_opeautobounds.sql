@@ -206,7 +206,7 @@ BEGIN
 END
 $$;
 
-CREATE FUNCTION admin.generate_partition_bounds(keyspec admin.partition_keyspec, modulus INT, withdefault BOOLEAN=true)
+CREATE FUNCTION admin.generate_partition_bounds(keyspec admin.partition_keyspec, modulus INT)
 RETURNS admin.partition_bound[]
 LANGUAGE plpgsql
 AS
@@ -235,12 +235,6 @@ BEGIN
 		bound=admin.make_hash_partition_bound(keyspec,hbound);
 		bounds=pg_catalog.array_append(bounds,bound);
 	END LOOP;
-
-	IF (withdefault)
-	THEN
-		bound=admin.make_default_partition_bound(keyspec);
-		bounds=pg_catalog.array_append(bounds,bound);
-	END IF;
 
 	RETURN bounds;
 END
@@ -342,28 +336,15 @@ BEGIN
 END
 $$;
 
-CREATE FUNCTION admin.string_to_automatic_hash_partition_bound(partdesc TEXT)
-RETURNS admin.partition
-LANGUAGE plpgsql
-AS
-$$
-DECLARE
-    modul       BIGINT;
-
-BEGIN
-    RAISE DEBUG 'admin.string_to_automatic_hash_partition_bound(%)',partdesc;
-END
-$$;
-
-CREATE FUNCTION admin.string_to_automatic_partitions(partname admin.qualified_name, partkey admin.partition_keyspec, partdesc TEXT)
+CREATE FUNCTION admin.string_to_automatic_partitions(parentname admin.qualified_name, partkey admin.partition_keyspec, partdesc TEXT)
 RETURNS admin.partition[]
 LANGUAGE plpgsql
 AS
 $$
 DECLARE
+	pd			TEXT;
+	autostrat	admin.auto_strategy;
 	modul		BIGINT;
-	list		TEXT[];
-	
 	bound		admin.partition_bound;
 	bounds		admin.partition_bound[];
 	part		admin.partition;
@@ -371,7 +352,7 @@ DECLARE
 
 BEGIN
     RAISE DEBUG 'admin.string_to_automatic_partitions(%,%,%)',partname,partkey,partdesc;
-
+	
 	-- decode partdesc
 	-- HASH(columns),	[OVER AUTOMATIC] MODULUS	integer
 	-- LIST(column),	[OVER AUTOMATIC] LIST		(list)																[WITH DEFAULT]
@@ -380,15 +361,28 @@ BEGIN
 	-- RANGE(columns),	[OVER AUTOMATIC] BOUNDS		(list1)...(listn)													[WITH DEFAULT]
 
 	-- remove eventual OVER AUTOMATIC
+	pd=regexp_replace(partdesc,'[[:space:]]*OVER[[:space:]]*AUTOMATIC[[:space:]]*','',0,'i');
+
 	-- get automatic strategy (modulus,list,interval,steps,bounds)
+	autostrat=lower(regexp_substr(pd,'^[^[:space:]]+'));
 
 	IF (partkey.strategy = 'hash')
 	THEN
 		-- HASH(columns),	[OVER AUTOMATIC] MODULUS	integer
 		-- check and remove MODULUS keyword
+		IF (autostrat <> 'modulus')
+		THEN
+			RAISE EXCEPTION 'hash automatic partition could not be describe as %',autostrat;
+		-- ^[[:space:]]*MODULUS[[:space:]]*[[:digit:]]+
+		ELSE
+			pd=regexp_replace(partdesc,'[[:space:]]*'||autostrat||'[[:space:]]*','',0,'i');
+		END IF;
+
 		-- get automatic modulus params
+		modul=regexp_substr(pd,'^[[:digit:]]+')::BIGINT;
+
 		-- generate automatic partition_bounds
-		
+		bounds=admin.generate_partition_bounds(partkey,modul);
 	ELSIF (partkey.strategy = 'list')
     THEN
 		-- LIST(column),    [OVER AUTOMATIC] LIST       (list)
@@ -398,7 +392,7 @@ BEGIN
     ELSIF (partkey.strategy = 'range')
     THEN
     ELSE
-		IF (autostrat = 'INTERVAL')
+		IF (autostrat = 'interval')
 		THEN
 			-- RANGE(columns),  [OVER AUTOMATIC] INTERVAL   intval1,... [CENTER AT] (values)    [BACK]  integer [AHEAD] integer [WITH DEFAULT]
 			-- remove INTERVAL keyword

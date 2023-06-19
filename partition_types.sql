@@ -246,3 +246,6 @@ BEGIN
 	RETURN part;
 END
 $$;
+
+CREATE TYPE admin.auto_strategy AS ENUM(
+'modulus','list','interval','steps','bounds');
