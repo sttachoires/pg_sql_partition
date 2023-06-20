@@ -53,11 +53,11 @@ AUTOMATIC
 	create_automatic_table(tabname admin.qualified_name, tplname admin.qualified_name,
 	create_automatic_table_like(tabname TEXT, tplname TEXT, keyspec1 TEXT, partspec1 TEXT,...);
 	
-CREATE TABLE tb PARTITION BY HASH(column) OVER AUTOMATIC MODULUS integer
-CREATE TABLE tb PARTITION BY LIST(column) OVER AUTOMATIC LIST (list) [WITH DEFAULT]
-CREATE TABLE tb PARTITION BY LIST(column) OVER AUTOMATIC QUERY (query) [WITH DEFAULT]
-CREATE TABLE tb PARTITION BY RANGE(columns) OVER AUTOMATIC [REVERSE] INTERVAL interval CENTER AT {values|(query)} BACK integer AHEAD integer [WITH DEFAULT]
-CREATE TABLE tb PARTITION BY RANGE(columns) OVER AUTOMATIC BOUNDS {list|(query)} [FROM (frombound)] [TO (tobound)] CENTER AT {values|(query)} BACK integer AHEAD integer [WITH DEFAULT]
+CREATE TABLE tb PARTITION BY HASH(column) [OVER AUTOMATIC MODULUS] integer
+CREATE TABLE tb PARTITION BY LIST(column) [OVER AUTOMATIC LIST] (list) [WITH DEFAULT]
+CREATE TABLE tb PARTITION BY RANGE(columns) [OVER AUTOMATIC INTERVAL] (interval) [CENTER AT] (value) [BACK] integer [AHEAD] integer [WITH DEFAULT]
+CREATE TABLE tb PARTITION BY RANGE(columns) [OVER AUTOMATIC STEPS] step [CENTER AT] value [BACK] integer [AHEAD] integer [WITH DEFAULT]
+CREATE TABLE tb PARTITION BY RANGE(columns) [OVER AUTOMATIC BOUNDS] (list) [WITH DEFAULT]
 
 
 CREATE TABLE tb PARTITION BY partition_strategy1 OVER AUTOMATIC partition_bound_definition1 PARTITION BY partition_strategy2 OVER AUTOMATIC partition_bound_definition2 ...

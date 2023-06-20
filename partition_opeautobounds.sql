@@ -4,7 +4,7 @@
 
 \i partition_opebounds.sql
 
-CREATE FUNCTION admin.generate_hash_bounds(modulus INT)
+CREATE FUNCTION admin.generate_hash_bounds(modul INT)
 RETURNS admin.hash_bound[]
 LANGUAGE plpgsql
 AS
@@ -15,14 +15,15 @@ DECLARE
     bounds		admin.hash_bound[];
 
 BEGIN
-	IF (modulus < 1)
+	RAISE DEBUG 'admin.generate_hash_bounds(%)',modul;
+	IF (modul < 1)
 	THEN
-		RAISE EXCEPTION 'Cannot generate % hash partitions',modulus;
+		RAISE EXCEPTION 'Cannot generate % hash partitions',modul;
 	END IF;
 
-	FOR iter IN 0..(modulus - 1)
+	FOR iter IN 0..(modul - 1)
 	LOOP
-		bound=admin.make_hash_bound(modulus, iter);
+		bound=admin.make_hash_bound(modul, iter);
 		bounds=pg_catalog.array_append(bounds,bound);
 	END LOOP;
 
@@ -206,7 +207,7 @@ BEGIN
 END
 $$;
 
-CREATE FUNCTION admin.generate_partition_bounds(keyspec admin.partition_keyspec, modulus INT)
+CREATE FUNCTION admin.generate_partition_bounds(keyspec admin.partition_keyspec, modulus INT, withdefault BOOLEAN=false)
 RETURNS admin.partition_bound[]
 LANGUAGE plpgsql
 AS
@@ -223,6 +224,10 @@ BEGIN
 		RAISE EXCEPTION 'could not build % partition bounds with hash specifications',keyspec.strategy;
 	END IF;
 
+	IF (withdefault)
+	THEN
+		RAISE EXCEPTION 'hash partition can not have default';
+	END IF;
 	hbounds=admin.generate_hash_bounds(modulus);
 
 	IF (hbounds IS NULL)
@@ -343,15 +348,19 @@ AS
 $$
 DECLARE
 	pd			TEXT;
+	pdp			TEXT;
 	autostrat	admin.auto_strategy;
-	modul		BIGINT;
+	modul		INT;
+	wdef		BOOLEAN;
+	lst			TEXT;
 	bound		admin.partition_bound;
 	bounds		admin.partition_bound[];
+	partname	admin.qualified_name;
 	part		admin.partition;
 	parts		admin.partition[];
 
 BEGIN
-    RAISE DEBUG 'admin.string_to_automatic_partitions(%,%,%)',partname,partkey,partdesc;
+    RAISE DEBUG 'admin.string_to_automatic_partitions(%,%,%)',parentname,partkey,partdesc;
 	
 	-- decode partdesc
 	-- HASH(columns),	[OVER AUTOMATIC] MODULUS	integer
@@ -361,10 +370,13 @@ BEGIN
 	-- RANGE(columns),	[OVER AUTOMATIC] BOUNDS		(list1)...(listn)													[WITH DEFAULT]
 
 	-- remove eventual OVER AUTOMATIC
-	pd=regexp_replace(partdesc,'[[:space:]]*OVER[[:space:]]*AUTOMATIC[[:space:]]*','',0,'i');
+	pd=trim(pg_catalog.regexp_replace(trim(partdesc),'[[:space:]]*OVER[[:space:]]*AUTOMATIC[[:space:]]*',' ','i'));
+	RAISE DEBUG 'admin.string_to_automatic_partitions pd %',pd;
 
 	-- get automatic strategy (modulus,list,interval,steps,bounds)
-	autostrat=lower(regexp_substr(pd,'^[^[:space:]]+'));
+	pdp=pg_catalog.substring(pd,'^[[:space:]]*[^[:space:]]+');
+	autostrat=lower(trim(pdp));
+	RAISE DEBUG 'admin.string_to_automatic_partitions autostrat %',autostrat;
 
 	IF (partkey.strategy = 'hash')
 	THEN
@@ -375,11 +387,15 @@ BEGIN
 			RAISE EXCEPTION 'hash automatic partition could not be describe as %',autostrat;
 		-- ^[[:space:]]*MODULUS[[:space:]]*[[:digit:]]+
 		ELSE
-			pd=regexp_replace(partdesc,'[[:space:]]*'||autostrat||'[[:space:]]*','',0,'i');
+			pd=trim(pg_catalog.regexp_replace(pd,'[[:space:]]*'||autostrat||'[[:space:]]*',' ','i'));
+			RAISE DEBUG 'admin.string_to_automatic_partitions pd %',pd;
 		END IF;
 
 		-- get automatic modulus params
-		modul=regexp_substr(pd,'^[[:digit:]]+')::BIGINT;
+		RAISE DEBUG 'admin.string_to_automatic_partitions pd %',pd;
+		modul=trim(pg_catalog.substring(pd,'^[[:space:]]*[[:digit:]]+'))::INT;
+		RAISE DEBUG 'admin.string_to_automatic_partitions pd %',pd;
+		RAISE DEBUG 'admin.string_to_automatic_partitions modul %',modul;
 
 		-- generate automatic partition_bounds
 		bounds=admin.generate_partition_bounds(partkey,modul);
@@ -387,22 +403,90 @@ BEGIN
     THEN
 		-- LIST(column),    [OVER AUTOMATIC] LIST       (list)
 		-- check and remove LIST keyword
+		IF (autostrat <> 'list')
+        THEN
+            RAISE EXCEPTION 'list automatic partition could not be describe as %',autostrat;
+		ELSE
+            pd=trim(pg_catalog.regexp_replace(pd,'[[:space:]]*'||autostrat||'[[:space:]]*',' ','i'));
+            RAISE DEBUG 'admin.string_to_automatic_partitions pd %',pd;
+        END IF;
+
+		-- check and remove default specs
+		--wdef=pg_catalog.regexp_like(pd,'.*WITH[[:space:]]+DEFAULT.*','i');
+		IF (pd ~* 'WITH[[:space:]]+DEFAULT')
+		THEN
+			wdef=true;
+			pd=trim(pg_catalog.regexp_replace(trim(pd),'WITH[[:space:]]+DEFAULT','i'));
+			RAISE DEBUG 'admin.string_to_automatic_partitions pd %',pd;
+		END IF;
 		-- get automatic list params
+		RAISE DEBUG 'admin.string_to_automatic_partitions pd %',pd;
+        lst=trim(pg_catalog.substring(trim(pd),'^(.*)'));
+		lst=trim(LEADING '(' FROM lst);
+		lst=trim(TRAILING ')' FROM lst);
+
 		-- generate automatic partition_bounds
+		bounds=admin.generate_partition_bounds(partkey,pg_catalog.string_to_array(lst,','),wdef);
     ELSIF (partkey.strategy = 'range')
     THEN
-    ELSE
 		IF (autostrat = 'interval')
 		THEN
-			-- RANGE(columns),  [OVER AUTOMATIC] INTERVAL   intval1,... [CENTER AT] (values)    [BACK]  integer [AHEAD] integer [WITH DEFAULT]
+			-- RANGE(columns),  [OVER AUTOMATIC] INTERVAL (intvals) [CENTER AT (values)] [BACK integer] [AHEAD integer] [WITH DEFAULT]
 			-- remove INTERVAL keyword
-    	-- RANGE(columns),  [OVER AUTOMATIC] STEPS      steps       [CENTER AT] (values)    [BACK]  integer [AHEAD] integer [WITH DEFAULT]
-	    -- RANGE(columns),  [OVER AUTOMATIC] BOUNDS     (list1)...(listn)
+			pd=trim(pg_catalog.regexp_replace(pd,'[[:space:]]*'||autostrat||'[[:space:]]*',' ','i'));
+            RAISE DEBUG 'admin.string_to_automatic_partitions pd %',pd;
+			-- check and remove default specs
+			IF (pd ~* 'WITH[[:space:]]+DEFAULT')
+	        THEN
+    	        wdef=true;
+        	    pd=trim(pg_catalog.regexp_replace(trim(pd),'WITH[[:space:]]+DEFAULT','i'));
+            	RAISE DEBUG 'admin.string_to_automatic_partitions pd %',pd;
+	        END IF;
+			-- get automatic intervalparams
+			intervl=trim(pg_catalog.substring(trim(pd),'^(.*)'));
+	        intervl=trim(LEADING '(' FROM intervl);
+    	    intervl=trim(TRAILING ')' FROM intervl);
+			pd=trim(pg_catalog.regexp_replace(pd,'^(.*)'));
+			RAISE DEBUG 'admin.string_to_automatic_partitions pd %',pd;
+
+			
+		ELSIF (autostrat = 'steps')
+		THEN
+	    	-- RANGE(columns),  [OVER AUTOMATIC] STEPS      steps       [CENTER AT] (values)    [BACK]  integer [AHEAD] integer [WITH DEFAULT]
+		ELSIF (autostrat = 'bounds')
+        THEN
+		    -- RANGE(columns),  [OVER AUTOMATIC] BOUNDS     (list1)...(listn)
+		ELSE
+			RAISE EXCEPTION 'range automatic partition could not be describe as %',autostrat;
+		END IF;
+	ELSE
 		RAISE EXCEPTION 'unknown partition strategy %',partkey.strategy;
 	END IF;
 
+	-- build partitions
+	RAISE DEBUG 'admin.string_to_automatic_partitions bounds %',bounds;
+	IF (pg_catalog.array_length(bounds,1) > 0)
+	THEN
+		FOREACH bound IN ARRAY bounds
+		LOOP
+			RAISE DEBUG 'admin.string_to_automatic_partitions bound %',bound;
+			IF (bound.isdefault)
+			THEN
+				partname=admin.generate_default_partition_name(parentname);
+			ELSE
+				partname=admin.generate_partition_name(parentname);
+			END IF;
+			part=admin.make_partition(partname,bound);
+			RAISE DEBUG 'admin.string_to_automatic_partitions part %',part;
+			parts=pg_catalog.array_append(parts,part);
+		END LOOP;
+	ELSE
+		RETURN NULL;
+	END IF;
+
+	RAISE DEBUG 'admin.string_to_automatic_partitions parts %',parts;
 	-- search default 
-    RETURN bounds;
+    RETURN parts;
 END
 $$;
 
