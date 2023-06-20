@@ -146,7 +146,7 @@ BEGIN
 		RETURN NULL;
 	END IF;
 	rndm=(SELECT md5(random()::text));
-	tabname=concat(prefix,pg_catalog.substr(rndm,1,3));
+	tabname=concat(prefix,pg_catalog.substr(rndm,1,4));
 	name=admin.make_qualname(nsname,tabname);
 	
 	WHILE admin.table_exists(name)
@@ -167,27 +167,17 @@ STRICT
 AS
 $$
 DECLARE
-    tbname		TEXT;
-	iter		INTEGER=1;
     name        admin.qualified_name;
 
 BEGIN
     RAISE DEBUG 'admin.generate_partition_name tabname % prefix %',tabname,prefix;
 
-	IF (((tabname.nsname <> '') IS NOT TRUE) AND ((tabname.relname <> '') IS NOT TRUE))
+	IF (((tabname.nsname <> '') IS NOT TRUE) OR ((tabname.relname <> '') IS NOT TRUE))
 	THEN
 		RETURN NULL;
 	END IF;
-    tbname=concat(tabname.relname,prefix,iter);
-    name=admin.make_qualname(tabname.nsname,tbname);
+    name=admin.generate_table_name(tabname.nsname,concat(tabname.relname,prefix));
 
-    WHILE admin.table_exists(name)
-    LOOP
-		iter=iter+1;
-		tbname=concat(tabname.relname,prefix,iter);
-        name=admin.make_qualname(tabname.nsname,tbname);
-    END LOOP;
-    
     RETURN name;
 END
 $$;
@@ -199,26 +189,16 @@ STRICT
 AS
 $$
 DECLARE
-    tbname		TEXT;
-    iter        INTEGER=1;
     name        admin.qualified_name;
 
 BEGIN
     RAISE DEBUG 'admin.generate_default_partition_name tabname % prefix %',tabname,prefix;
 
-	IF (((tabname.nsname <> '') IS NOT TRUE) AND ((tabname.relname <> '') IS NOT TRUE))
+	IF (((tabname.nsname <> '') IS NOT TRUE) OR ((tabname.relname <> '') IS NOT TRUE))
 	THEN
 		RETURN NULL;
 	END IF;
-    tbname=concat(tabname.relname,prefix);
-    name=admin.make_qualname(tabname.nsname,tbname);
-
-    WHILE admin.table_exists(name)
-    LOOP
-        iter=iter+1;
-        tbname=concat(tabname.relname,prefix,iter);
-        name=admin.make_qualname(tabname.nsname,tbname);
-    END LOOP;
+    name=admin.generate_table_name(tabname.nsname,concat(tabname.relname,prefix));
 
     RETURN name;
 END

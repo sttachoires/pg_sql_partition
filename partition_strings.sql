@@ -213,7 +213,7 @@ BEGIN
 
 	IF (bound.isdefault)
 	THEN
-		RETURN 'DEFAULT';
+		RETURN 'default';
 	ELSE
 		cmd=format('SELECT pg_catalog.array_to_string(''%s''::%s,'','')',(bound.listbound).elems,(bound.listbound).subtyp);
 	
@@ -223,7 +223,7 @@ BEGIN
 	
 		RAISE DEBUG 'admin.list_partition_bound_to_string sbound %',sbound;
 	
-		sbound=concat('IN (',sbound,')');
+		sbound=concat('in (',sbound,')');
 	
 		RAISE DEBUG 'admin.list_partition_bound_to_string sbound %',sbound;
 	

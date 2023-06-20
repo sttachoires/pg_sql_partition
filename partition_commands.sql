@@ -341,9 +341,9 @@ DECLARE
     parts       admin.partition[]=NULL;
 
 BEGIN
-	RAISE DEBUG 'admin.create_automatic_table_like(%,%,%)',tabname,tplname,pg_catalog.array_to_string(partdescs,',');
 	tabname=admin.string_to_qualname(tab);
 	tplname=admin.string_to_qualname(tpl);
+	RAISE DEBUG 'admin.create_automatic_table_like(%,%,%)',tabname,tplname,pg_catalog.array_to_string(partdescs,',');
 
 	-- Decode partdesc
 	FOR iter IN pg_catalog.array_length(partdescs,1)..2 BY 2
@@ -360,7 +360,7 @@ BEGIN
 		END IF;
 	END LOOP;
 
-	RAISE DEBUG 'admin.create_automatic_table_like(%,%,%,%)',tabname,tplname,partkey,pg_catalog.array_to_string(parts,',');
+	RAISE DEBUG 'admin.create_automatic_table_like admin.create_table(%,%,%,%)',tabname,tplname,partkey,pg_catalog.array_to_string(parts,',');
 	PERFORM admin.create_table(tabname,tplname,partkey,VARIADIC parts);
 END
 $$;

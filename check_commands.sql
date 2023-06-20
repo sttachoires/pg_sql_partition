@@ -1,4 +1,5 @@
 SET client_min_messages = notice;
+\pset pager off
 \set ON_ERROR_STOP on
 \i partition_commands.sql
 
@@ -295,12 +296,17 @@ SELECT * FROM admin.relations;
 
 SET client_min_messages = notice;
 DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;;
-CREATE TABLE public.tb_tpl (id BIGSERIAL, label TEXT, stamp TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT current_timestamp, region_id BIGINT);
+CREATE TABLE public.tb_tpl (id BIGSERIAL, label TEXT, stamp TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT current_timestamp, region_id CHAR(3));
+SELECT * FROM admin.partitions;
+
+SET client_min_messages = NOTICE;
+SELECT 'admin.create_automatic_table_like(public.tbh, public.tb_tpl, hash(id), modulus 2)',*
+FROM admin.create_automatic_table_like('public.tbh', 'public.tb_tpl', 'hash(id)', 'modulus 2');
 SELECT * FROM admin.partitions;
 
 SET client_min_messages = debug;
-SELECT 'admin.create_automatic_table_like(tab TEXT, tpl TEXT, VARIADIC partdescs TEXT[])',*
-FROM admin.create_automatic_table_like('public.tb', 'public.tb_tpl', 'hash(region_id)', 'modulus 2');
+SELECT 'admin.create_automatic_table_like(public.tbl, public.tbh, list(region_id), list (AFR,AMN,ASI,EUR,OCE) with default)',*
+FROM admin.create_automatic_table_like('public.tbl', 'public.tbh', 'list(region_id)', 'list (AFR,AMN,ASI,EUR,OCE) with default');
 
 SELECT 'admin.check_them_all',* FROM admin.check_them_all();
 
