@@ -37,18 +37,17 @@ FROM admin.generate_partition_bounds(admin.make_partition_keyspec('list',ARRAY['
 SELECT 'admin.generate_partition_bounds(admin.make_partition_keyspec((''range'',{''stamp''},{''DATE''}),''1 month''::INTERVAL,''2023-06-01''::DATE,2,2)',*
 FROM admin.generate_partition_bounds(admin.make_partition_keyspec('range',ARRAY['stamp'],ARRAY['DATE']), '1 month'::INTERVAL, '2023-06-01'::DATE, 2, 2);
 
-SET client_min_messages = debug;
 SELECT 'admin.generate_partition_bounds(admin.make_partition_keyspec(''range'',{''stamp''},{''DATE''}),''1 month''::INTERVAL,''2023-06-01''::DATE,2,2,false)',*
 FROM admin.generate_partition_bounds(admin.make_partition_keyspec('range',ARRAY['stamp'],ARRAY['DATE']), '1 month'::INTERVAL, '2023-06-01'::DATE, 2, 2, false);
 
-SET client_min_messages = debug;
 SELECT 'admin.string_to_automatic_partitions((public.tb),(hash,{id,region_id},{bigint,bigint}),''OVER AUTOMATIC MODULUS 4'')',*
 FROM admin.string_to_automatic_partitions(admin.make_qualname('public','tb'), admin.make_partition_keyspec('hash',ARRAY['id','region_id'],ARRAY['bigint','bigint']), 'OVER AUTOMATIC MODULUS 4');
 
-SET client_min_messages = debug;
-SELECT 'admin.string_to_automatic_partitions((public.tb),(list,{id,region_id},{bigint,bigint}),''OVER AUTOMATIC 4'')',*
+SELECT 'admin.string_to_automatic_partitions((public.tb),(list,{id,region_id},{bigint,bigint}),''OVER AUTOMATIC LIST (AFR,AME,ASI,EUR,OCE) WITH DEFAULT'')',*
 FROM admin.string_to_automatic_partitions(admin.make_qualname('public','tb'), admin.make_partition_keyspec('list',ARRAY['region_id'],ARRAY['bigint']), 'OVER AUTOMATIC LIST (''AFR'',''AME'',''ASI'',''EUR'',''OCE'') WITH DEFAULT');
 
+SELECT 'admin.string_to_automatic_partitions((public.tb),(range,{stamp},{DATE}),''OVER AUTOMATIC INTERVAL (1 month) CENTER (2023-06-23) BACK 2 AHEAD 2 WITH DEFAULT)''',*
+FROM admin.string_to_automatic_partitions(admin.make_qualname('public','tb'), admin.make_partition_keyspec('range','{stamp}','{DATE}'),'OVER AUTOMATIC INTERVAL (1 month) CENTER (2023-06-23) BACK 2 AHEAD 2 WITH DEFAULT');
 
 SET client_min_messages=notice;
 SELECT 'admin.check_them_all',* FROM admin.check_them_all();

@@ -289,11 +289,18 @@ SELECT 'admin.create_table_like',*
 FROM admin.create_table_like('public.tl', 'public.tb', 'LIST(region_id)','public.tl1 FOR VALUES (1,2,3)','public.tl2 FOR VALUES (4,5,6)','public.td DEFAULT');
 
 SET client_min_messages = notice;
-SELECT * FROM admin.partitions;
-SELECT * FROM admin.relations;
 INSERT INTO public.tb (region_id) VALUES (generate_series(1, 10));
 SELECT * FROM admin.partitions;
 SELECT * FROM admin.relations;
+
+SET client_min_messages = notice;
+DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;;
+CREATE TABLE public.tb_tpl (id BIGSERIAL, label TEXT, stamp TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT current_timestamp, region_id BIGINT);
+SELECT * FROM admin.partitions;
+
+SET client_min_messages = debug;
+SELECT 'admin.create_automatic_table_like(tab TEXT, tpl TEXT, VARIADIC partdescs TEXT[])',*
+FROM admin.create_automatic_table_like('public.tb', 'public.tb_tpl', 'hash(region_id)', 'modulus 2');
 
 SELECT 'admin.check_them_all',* FROM admin.check_them_all();
 

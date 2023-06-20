@@ -353,6 +353,11 @@ DECLARE
 	modul		INT;
 	wdef		BOOLEAN;
 	lst			TEXT;
+	params		TEXT[];
+	intervalp	INTERVAL;
+	centerp		TEXT;
+	backp		INT;
+	aheadp		INT;
 	bound		admin.partition_bound;
 	bounds		admin.partition_bound[];
 	partname	admin.qualified_name;
@@ -416,7 +421,7 @@ BEGIN
 		IF (pd ~* 'WITH[[:space:]]+DEFAULT')
 		THEN
 			wdef=true;
-			pd=trim(pg_catalog.regexp_replace(trim(pd),'WITH[[:space:]]+DEFAULT','i'));
+			pd=trim(pg_catalog.regexp_replace(trim(pd),'WITH[[:space:]]+DEFAULT',' ','i'));
 			RAISE DEBUG 'admin.string_to_automatic_partitions pd %',pd;
 		END IF;
 		-- get automatic list params
@@ -431,7 +436,7 @@ BEGIN
     THEN
 		IF (autostrat = 'interval')
 		THEN
-			-- RANGE(columns),  [OVER AUTOMATIC] INTERVAL (intvals) [CENTER AT (values)] [BACK integer] [AHEAD integer] [WITH DEFAULT]
+			-- RANGE(columns),  [OVER AUTOMATIC] INTERVAL (intvals) CENTER AT (values) BACK integer AHEAD integer [WITH DEFAULT]
 			-- remove INTERVAL keyword
 			pd=trim(pg_catalog.regexp_replace(pd,'[[:space:]]*'||autostrat||'[[:space:]]*',' ','i'));
             RAISE DEBUG 'admin.string_to_automatic_partitions pd %',pd;
@@ -439,17 +444,28 @@ BEGIN
 			IF (pd ~* 'WITH[[:space:]]+DEFAULT')
 	        THEN
     	        wdef=true;
-        	    pd=trim(pg_catalog.regexp_replace(trim(pd),'WITH[[:space:]]+DEFAULT','i'));
+        	    pd=trim(pg_catalog.regexp_replace(trim(pd),'WITH[[:space:]]+DEFAULT','','i'));
             	RAISE DEBUG 'admin.string_to_automatic_partitions pd %',pd;
 	        END IF;
-			-- get automatic intervalparams
-			intervl=trim(pg_catalog.substring(trim(pd),'^(.*)'));
-	        intervl=trim(LEADING '(' FROM intervl);
-    	    intervl=trim(TRAILING ')' FROM intervl);
-			pd=trim(pg_catalog.regexp_replace(pd,'^(.*)'));
-			RAISE DEBUG 'admin.string_to_automatic_partitions pd %',pd;
+			-- get automatic interval params
+			params=pg_catalog.regexp_match(trim(pd),'\((.*)\)[[:space:]]+CENTER[[:space:]]*\((.*)\)[[:space:]]+BACK[[:space:]]*([[:digit:]]+)[[:space:]]+AHEAD[[:space:]]*([[:digit:]]+)');
+			intervalp=trim(params[1])::INTERVAL;
+			centerp=trim(params[2]);
+			backp=trim(params[3])::INT;
+			aheadp=trim(params[4])::INT;
 
-			
+			RAISE DEBUG 'admin.string_to_automatic_partitions intervalp %',intervalp;
+			RAISE DEBUG 'admin.string_to_automatic_partitions centerp %',centerp;
+            RAISE DEBUG 'admin.string_to_automatic_partitions backp %',backp;
+            RAISE DEBUG 'admin.string_to_automatic_partitions aheadp %',aheadp;
+
+			pd=trim(pg_catalog.regexp_replace(trim(pd),'\((.*)\)[[:space:]]+CENTER[[:space:]]*\((.*)\)[[:space:]]+BACK[[:space:]]*[[:digit:]]+[[:space:]]+AHEAD[[:space:]]*[[:digit:]]+','','i'));
+            RAISE DEBUG 'admin.string_to_automatic_partitions pd %',pd;
+
+			-- generate automatic partition_bounds
+			EXECUTE format('SELECT admin.generate_partition_bounds($1,$2,$3::%s,$4,$5,$6)',partkey.coltypes[1])
+					USING partkey,intervalp,centerp,backp,aheadp,wdef
+					INTO bounds;
 		ELSIF (autostrat = 'steps')
 		THEN
 	    	-- RANGE(columns),  [OVER AUTOMATIC] STEPS      steps       [CENTER AT] (values)    [BACK]  integer [AHEAD] integer [WITH DEFAULT]

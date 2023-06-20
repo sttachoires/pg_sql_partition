@@ -329,7 +329,7 @@ BEGIN
 END
 $$;
 
-CREATE FUNCTION admin.create_automatic_table_like(tab TEXT, tpl TEXT, VARIADIC partdescs)
+CREATE FUNCTION admin.create_automatic_table_like(tab TEXT, tpl TEXT, VARIADIC partdescs TEXT[])
 RETURNS VOID
 LANGUAGE plpgsql
 AS $$
@@ -338,7 +338,6 @@ DECLARE
     tplname     admin.qualified_name;
 	iter		BIGINT;
     partkey     admin.partition_keyspec=NULL;
-    part        admin.partition;
     parts       admin.partition[]=NULL;
 
 BEGIN
@@ -347,14 +346,21 @@ BEGIN
 	tplname=admin.string_to_qualname(tpl);
 
 	-- Decode partdesc
-	FOR iter IN pg_catalog.array_length(partdescs,1)..2 STEP 2
+	FOR iter IN pg_catalog.array_length(partdescs,1)..2 BY 2
 	LOOP
-		partkey=admin.string_to_partkey(partdescs[iter-1]);
-		part=admin.string_to_automatic_partitions(partname,partkey,partdescs[iter]);
-		parts=admin.array_append(parts,part);
+		partkey=admin.string_to_partition_keyspec(tplname,partdescs[iter-1]);
+		IF (partkey IS NULL)
+		THEN
+			RAISE EXCEPTION 'unknow partition key description %',partdescs[iter-1];
+		END IF;
+		parts=admin.string_to_automatic_partitions(tabname,partkey,partdescs[iter]);
+		IF (parts IS NULL)
+		THEN
+			RAISE EXCEPTION 'unknow automatic partition description % for partition key description %',partdescs[iter],partdescs[iter-1];
+		END IF;
 	END LOOP;
 
-	RAISE DEBUG 'admin.create_automatic_table_like(%,%,%,%)'tabname,tplname,partkey,pg_catalog.array_to_string(parts,',');
+	RAISE DEBUG 'admin.create_automatic_table_like(%,%,%,%)',tabname,tplname,partkey,pg_catalog.array_to_string(parts,',');
 	PERFORM admin.create_table(tabname,tplname,partkey,VARIADIC parts);
 END
 $$;

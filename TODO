@@ -47,9 +47,11 @@ AUTOMATIC
 	#generate_partition_bounds(keyspec admin.partition_keyspec, boundspec ANYARRAY, with_default BOOLEAN=true)
 	#generate_partition_bounds(keyspec admin.partition_keyspec, interval INTERVAL, center ANYELEMENT, back INT=0, ahead INT=0, with_default BOOLEAN=true)
 	
-	?generate_partitions(tabname admin.qualified_name,modulus INT)
-	?generate_partitions(tabname admin.qualified_name,boundlist ANYARRAY)
-	?generate_partitions(tabname admin.qualified_name,interval INTERVAL, center TIMESTAMP WITH TIME ZONE, back INT=0, ahead INT=0)
+	#string_to_automatic_partitions(tabname admin.qualified_name,modulus INT)
+	#string_to_automatic_partitions(tabname admin.qualified_name,boundlist ANYARRAY)
+	string_to_automatic_partitions(tabname admin.qualified_name,interval INTERVAL, center TIMESTAMP WITH TIME ZONE, back INT=0, ahead INT=0)
+		analyzer TOUTE la ligne ave cregexp_match
+	
 	create_automatic_table(tabname admin.qualified_name, tplname admin.qualified_name,
 	create_automatic_table_like(tabname TEXT, tplname TEXT, keyspec1 TEXT, partspec1 TEXT,...);
 	
