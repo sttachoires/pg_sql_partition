@@ -223,7 +223,7 @@ BEGIN
 	
 		RAISE DEBUG 'admin.list_partition_bound_to_string sbound %',sbound;
 	
-		sbound=concat('in (',sbound,')');
+		sbound=format('in (%L)',sbound);
 	
 		RAISE DEBUG 'admin.list_partition_bound_to_string sbound %',sbound;
 	

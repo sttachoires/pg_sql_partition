@@ -436,7 +436,7 @@ BEGIN
     THEN
 		IF (autostrat = 'interval')
 		THEN
-			-- RANGE(columns),  [OVER AUTOMATIC] INTERVAL (intvals) CENTER AT (values) BACK integer AHEAD integer [WITH DEFAULT]
+			-- RANGE(columns),  [OVER AUTOMATIC] INTERVAL (intvals) CENTER (values) BACK integer AHEAD integer [WITH DEFAULT]
 			-- remove INTERVAL keyword
 			pd=trim(pg_catalog.regexp_replace(pd,'[[:space:]]*'||autostrat||'[[:space:]]*',' ','i'));
             RAISE DEBUG 'admin.string_to_automatic_partitions pd %',pd;
@@ -468,7 +468,7 @@ BEGIN
 					INTO bounds;
 		ELSIF (autostrat = 'steps')
 		THEN
-	    	-- RANGE(columns),  [OVER AUTOMATIC] STEPS      steps       [CENTER AT] (values)    [BACK]  integer [AHEAD] integer [WITH DEFAULT]
+	    	-- RANGE(columns),  [OVER AUTOMATIC] STEPS      steps       CENTER (values)    BACK  integer AHEAD integer [WITH DEFAULT]
 		ELSIF (autostrat = 'bounds')
         THEN
 		    -- RANGE(columns),  [OVER AUTOMATIC] BOUNDS     (list1)...(listn)
