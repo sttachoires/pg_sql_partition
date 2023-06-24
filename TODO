@@ -53,7 +53,13 @@ AUTOMATIC
 		#analyzer TOUTE la ligne ave cregexp_match
 	
 	create_automatic_table_like(tabname TEXT, tplname TEXT, keyspec1 TEXT, partspec1 TEXT,...);
-		renommer la table mère à chaque itération
+		A chaque iter depuis la derniere
+			si pas la premiere
+				newname=generate_table_name()
+			sinon
+				newname=tabname
+			create_automatic_table_like (newname,tplname,keypecn, partspecn)
+			tplname=newname
 		
 	
 CREATE TABLE tb PARTITION BY HASH(column) [OVER AUTOMATIC MODULUS] integer

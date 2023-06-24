@@ -1,5 +1,6 @@
 SET client_min_messages=notice;
 \set ON_ERROR_STOP on
+\pset pager off
 \i partition_strings.sql
 
 SELECT 'admin.string_to_partition_keyspec',*

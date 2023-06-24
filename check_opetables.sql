@@ -1,5 +1,6 @@
 SET client_min_messages = notice;
 \set ON_ERROR_STOP on
+\pset pager off
 \i partition_opetables.sql
 
 SET client_min_messages = notice;
@@ -261,13 +262,14 @@ CREATE SCHEMA public;
 CREATE TABLE public.tbl (id BIGSERIAL, label TEXT, stamp TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT current_timestamp, region_id BIGINT)
     PARTITION BY list (region_id);
 SELECT * FROM admin.partitions;
-SET client_min_messages = NOTICE;
+SET client_min_messages = debug;
 SELECT 'admin.create_partition'
 FROM admin.create_partition(admin.make_qualname('public','tbl'),
 							admin.make_qualname('public','tbl'),
                             admin.make_partition(admin.make_qualname('public','tbr_1'),
                                              admin.make_list_partition_bound(admin.make_partition_keyspec('list',ARRAY['region_id'],ARRAY['bigInt']),
                                                                              admin.make_list_bound(ARRAY[1,2,3]::bigint[]))));
+
 
 SELECT 'admin.create_partition'
 FROM admin.create_partition(admin.make_qualname('public','tbl'),

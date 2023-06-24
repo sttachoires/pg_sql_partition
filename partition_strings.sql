@@ -215,7 +215,7 @@ BEGIN
 	THEN
 		RETURN 'default';
 	ELSE
-		cmd=format('SELECT pg_catalog.array_to_string(''%s''::%s,'','')',(bound.listbound).elems,(bound.listbound).subtyp);
+		cmd=format('SELECT pg_catalog.array_to_string(%s::%s,'','')',pg_catalog.quote_literal((bound.listbound).elems),(bound.listbound).subtyp);
 	
 		RAISE DEBUG 'admin.list_partition_bound_to_string cmd %',cmd;
 	
@@ -223,7 +223,7 @@ BEGIN
 	
 		RAISE DEBUG 'admin.list_partition_bound_to_string sbound %',sbound;
 	
-		sbound=format('in (%L)',sbound);
+		sbound=format('in (%s)',sbound);
 	
 		RAISE DEBUG 'admin.list_partition_bound_to_string sbound %',sbound;
 	

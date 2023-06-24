@@ -4,6 +4,7 @@
 
 SET client_min_messages=notice;
 \set ON_ERROR_STOP on
+\pset pager off
 \i partition_utils.sql
 
 SELECT 'admin.array_sort',*

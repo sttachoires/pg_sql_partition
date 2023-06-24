@@ -554,6 +554,7 @@ BEGIN
     PERFORM admin.drop_table_constraints(tabqname);
     PERFORM admin.drop_table_default_values(tabqname);
 
+	RAISE NOTICE 'drop table %.% cascade',(tabqname).nsname,(tabqname).relname;
     EXECUTE format('DROP TABLE %I.%I CASCADE',(tabqname).nsname,(tabqname).relname);
 END
 $$;
