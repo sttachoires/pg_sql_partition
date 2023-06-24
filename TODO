@@ -50,16 +50,18 @@ AUTOMATIC
 	#string_to_automatic_partitions(tabname admin.qualified_name,modulus INT)
 	#string_to_automatic_partitions(tabname admin.qualified_name,boundlist ANYARRAY)
 	#string_to_automatic_partitions(tabname admin.qualified_name,interval INTERVAL, center TIMESTAMP WITH TIME ZONE, back INT=0, ahead INT=0)
-		#analyzer TOUTE la ligne ave cregexp_match
+		#analyzer TOUTE la ligne avec regexp_match
 	
 	create_automatic_table_like(tabname TEXT, tplname TEXT, keyspec1 TEXT, partspec1 TEXT,...);
-		A chaque iter depuis la derniere
-			si pas la premiere
-				newname=generate_table_name()
-			sinon
-				newname=tabname
-			create_automatic_table_like (newname,tplname,keypecn, partspecn)
-			tplname=newname
+		#A chaque iter depuis la derniere
+			#si pas la premiere
+			#	newname=generate_table_name()
+			#sinon
+			#	newname=tabname
+			#create_automatic_table_like (newname,tplname,keypecn, partspecn)
+			#drop tpl of not the orignal one
+			#tplname=newname
+		pb avec les listes...
 		
 	
 CREATE TABLE tb PARTITION BY HASH(column) [OVER AUTOMATIC MODULUS] integer
