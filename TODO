@@ -62,6 +62,7 @@ AUTOMATIC
 			#drop tpl of not the orignal one
 			#tplname=newname
 		pb avec les listes...
+		ajouter les autre colonnes de partitions en minvalue maxvalue
 		
 	
 CREATE TABLE tb PARTITION BY HASH(column) [OVER AUTOMATIC MODULUS] integer

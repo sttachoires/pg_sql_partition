@@ -207,6 +207,7 @@ $$
 DECLARE
 	sbound	TEXT;
 	cmd		TEXT;
+	iter	BIGINT;
 
 BEGIN
 	RAISE DEBUG 'admin.list_partition_bound_to_string bound %',bound;
@@ -215,14 +216,29 @@ BEGIN
 	THEN
 		RETURN 'default';
 	ELSE
-		cmd=format('SELECT pg_catalog.array_to_string(%s::%s,'','')',pg_catalog.quote_literal((bound.listbound).elems),(bound.listbound).subtyp);
+--		IF ((bound.listbound).subtyp ILIKE 'TEXT%')
+--		THEN
+--			IF (pg_catalog.array_length((bound.listbound).elems,1) > 1)
+--			THEN
+--				sbound=format('%s',(bound.listbound).elems[1]);
+--				FOR iter IN 2..pg_catalog.array_length((bound.listbound).elems,1)
+--				LOOP
+--					sbound=format('%s,%s',sbound,(bound.listbound).elems[iter]);
+--				END LOOP;
+--			ELSE
+--				sbound=format('%s',(bound.listbound).elems[1]);
+--			END IF;
+--			RAISE DEBUG 'admin.list_partition_bound_to_string % sbound %',(bound.listbound).subtyp,sbound;
+--		ELSE
+			cmd=format('SELECT pg_catalog.array_to_string(%s::%s,'','')',pg_catalog.quote_literal((bound.listbound).elems),(bound.listbound).subtyp);
 	
-		RAISE DEBUG 'admin.list_partition_bound_to_string cmd %',cmd;
+			RAISE DEBUG 'admin.list_partition_bound_to_string % cmd %',(bound.listbound).subtyp,cmd;
 	
-		EXECUTE cmd INTO sbound;
-	
+			EXECUTE cmd INTO sbound;
+--		END IF;
+
 		RAISE DEBUG 'admin.list_partition_bound_to_string sbound %',sbound;
-	
+
 		sbound=format('in (%s)',sbound);
 	
 		RAISE DEBUG 'admin.list_partition_bound_to_string sbound %',sbound;

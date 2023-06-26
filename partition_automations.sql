@@ -26,6 +26,7 @@ BEGIN
 
 	IF ((pg_catalog.array_length(partdescs,1) >= 2) AND ((pg_catalog.array_length(partdescs,1) % 2) = 0))
 	THEN
+		newname=tabname;
 	    FOR iter IN REVERSE pg_catalog.array_length(partdescs,1)..2 BY 2
 	    LOOP
 			-- 
@@ -41,7 +42,7 @@ BEGIN
 			-- else tabname will be the top table name
 			IF (iter > 2)
 			THEN
-				newname=admin.generate_table_name(tabname.nsname);
+				newname=admin.generate_partition_name(newname);
 			ELSE
 				newname=tabname;
 			END IF;
