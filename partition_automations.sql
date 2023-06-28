@@ -12,6 +12,7 @@ DECLARE
     tabname     admin.qualified_name;
     tplname     admin.qualified_name;
 	newname		admin.qualified_name;
+	newnames	admin.qualified_name[];
     iter        BIGINT;
     partkey     admin.partition_keyspec=NULL;
     parts       admin.partition[]=NULL;
@@ -26,10 +27,17 @@ BEGIN
 
 	IF ((pg_catalog.array_length(partdescs,1) >= 2) AND ((pg_catalog.array_length(partdescs,1) % 2) = 0))
 	THEN
+		-- if not topmost partitionned table (first one, last iteration), create new name
+		-- else tabname will be the top table name
 		newname=tabname;
+		FOR iter IN 1..pg_catalog.array_length(partdescs,1) BY 2
+		LOOP
+			newnames=pg_catalog.array_append(newnames,newname);
+			newname=admin.generate_partition_name(newname);
+		END LOOP;
+
 	    FOR iter IN REVERSE pg_catalog.array_length(partdescs,1)..2 BY 2
 	    LOOP
-			-- 
 			RAISE DEBUG 'admin.create_automatic_table_like partdescs[%-1]=%',iter,partdescs[iter-1];
 	        partkey=admin.string_to_partition_keyspec(tplname,partdescs[iter-1]);
 	        IF (partkey IS NULL)
@@ -38,15 +46,7 @@ BEGIN
 	        END IF;
 			RAISE DEBUG 'admin.create_automatic_table_like partdescs[%]=%',iter,partdescs[iter];
 
-			-- if not topmost partitionned table (first one, last iteration), create new name
-			-- else tabname will be the top table name
-			IF (iter > 2)
-			THEN
-				newname=admin.generate_partition_name(newname);
-			ELSE
-				newname=tabname;
-			END IF;
-
+			newname=newnames[iter/2];
 	        parts=admin.string_to_automatic_partitions(newname,partkey,partdescs[iter]);
 	        IF (parts IS NULL)
 	        THEN
@@ -57,10 +57,10 @@ BEGIN
 	    	PERFORM admin.create_table(newname,tplname,partkey,VARIADIC parts);
 
 			-- if not original tpl table, drop it, i was just created to be a template of this one
-			RAISE NOTICE 'tplname % tpl %',tplname,tpl;
 			IF (tplname <> admin.string_to_qualname(tpl))
 			THEN
-				PERFORM admin.drop_table(tplname);
+				RAISE NOTICE'admin.create_automatic_table_like admin.drop_table(%)',tplname;
+				--PERFORM admin.drop_table(tplname);
 			END IF;
 			-- this partionned table will be the next template
 			tplname=newname;

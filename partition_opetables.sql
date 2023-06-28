@@ -282,6 +282,9 @@ BEGIN
 END
 $$;
 
+--
+-- Needed because create_partition calls create_table and the reverse
+--
 CREATE FUNCTION admin.create_table(tabname admin.qualified_name, tplname admin.qualified_name, partkey admin.partition_keyspec=NULL, VARIADIC parts admin.partition[]=NULL)
 RETURNS VOID
 LANGUAGE plpgsql AS $$
@@ -328,7 +331,6 @@ BEGIN
 		END IF;
 		IF ((tbpartkeyspec IS NOT NULL) IS NOT FALSE)
 		THEN
-			
 			IF ((tbpartnames IS NOT NULL) IS NOT FALSE)
 	        THEN
 				FOREACH tbpartname IN ARRAY tbpartnames
@@ -340,9 +342,9 @@ BEGIN
 
 					IF (tbbound.isdefault)
 	                THEN
-                    	tbname=admin.generate_default_partition_name(tbpartname);
+                    	tbname=admin.generate_default_partition_name(partname);
     	            ELSE
-                    	tbname=admin.generate_partition_name(tbpartname);
+                    	tbname=admin.generate_partition_name(partname);
 	                END IF;
 					RAISE DEBUG 'admin.create_partition tbname %',tbname;
 

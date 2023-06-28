@@ -45,9 +45,22 @@ SET client_min_messages = debug;
 SELECT 'admin.create_automatic_table_like(public.tb, public.tb_tpl, hash(id), modulus 2, list(region_id), list (''AFR'',''AMN'') with default)',*
 FROM admin.create_automatic_table_like('public.tb', 'public.tb_tpl','hash(id)', 'modulus 2', 'list(region_id)', 'list (''AFR'',''AMN'') with default');
 
+SET client_min_messages = notice;
+DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;
+CREATE TABLE public.tb_tpl (id BIGSERIAL, label TEXT, stamp TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT current_timestamp, region_id TEXT);
+
 SET client_min_messages = debug;
 SELECT 'admin.create_automatic_table_like(public.tb, public.tb_tpl, hash(id), modulus 2, list(id), list (1,2) with default)',*
 FROM admin.create_automatic_table_like('public.tb', 'public.tb_tpl','hash(id)', 'modulus 2', 'list(id)', 'list (1,2) with default');
+
+INSERT INTO public.tb (label,region_id) SELECT 'public.tb/'||"s"::TEXT, 'AFR' FROM generate_series(1, 10) AS "s";
+INSERT INTO public.tb (label,region_id) SELECT 'public.tb/'||"s"::TEXT, 'AMN' FROM generate_series(1, 10) AS "s";
+SET client_min_messages = notice;
+SELECT * FROM admin.partitions;
+
+SET client_min_messages = notice;
+DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;
+CREATE TABLE public.tb_tpl (id BIGSERIAL, label TEXT, stamp TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT current_timestamp, region_id TEXT);
 
 SET client_min_messages = debug;
 SELECT 'admin.create_automatic_table_like(public.tb, public.tb_tpl, list(id), list (1,2) with default, hash(id), modulus 2)',*

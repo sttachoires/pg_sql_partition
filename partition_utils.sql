@@ -146,13 +146,13 @@ BEGIN
 		RETURN NULL;
 	END IF;
 	rndm=(SELECT md5(random()::text));
-	tabname=concat(prefix,pg_catalog.substr(rndm,1,4));
+	tabname=pg_catalog.substr(concat(prefix,pg_catalog.substr(rndm,1,4)),1,64);
 	name=admin.make_qualname(nsname,tabname);
 	
 	WHILE admin.table_exists(name)
 	LOOP
 		rndm=(SELECT md5(random()::text));
-		tabname=concat(prefix,pg_catalog.substr(rndm,1,4));
+		tabname=pg_catalog.substr(concat(prefix,pg_catalog.substr(rndm,1,4)),1,64);
 		name=admin.make_qualname(nsname,tabname);
 	END LOOP;
 	
@@ -160,7 +160,7 @@ BEGIN
 END
 $$;
 
-CREATE FUNCTION admin.generate_partition_name(tabname admin.qualified_name, prefix TEXT='_')
+CREATE FUNCTION admin.generate_partition_name(tabname admin.qualified_name, prefix TEXT='_p')
 RETURNS admin.qualified_name
 LANGUAGE plpgsql
 STRICT
