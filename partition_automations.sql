@@ -60,7 +60,7 @@ BEGIN
 			IF (tplname <> admin.string_to_qualname(tpl))
 			THEN
 				RAISE NOTICE'admin.create_automatic_table_like admin.drop_table(%)',tplname;
-				--PERFORM admin.drop_table(tplname);
+				PERFORM admin.drop_table(tplname);
 			END IF;
 			-- this partionned table will be the next template
 			tplname=newname;

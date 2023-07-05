@@ -31,14 +31,13 @@ BEGIN
 END
 $$;
 
-CREATE FUNCTION admin.generate_list_bounds(VARIADIC list ANYCOMPATIBLEARRAY)
+CREATE FUNCTION admin.generate_list_bounds(keyspec admin.partition_keyspec, VARIADIC list ANYCOMPATIBLEARRAY)
 RETURNS admin.list_bound[]
 LANGUAGE plpgsql
 AS
 $$
 DECLARE
 	iter	INT;
-	btype	TEXT;
 	bound	admin.list_bound;
 	bounds	admin.list_bound[];
 
@@ -57,22 +56,22 @@ BEGIN
 
 	IF (pg_catalog.array_ndims(list) = 1)
 	THEN
-		btype=pg_catalog.pg_typeof(list[1]);
-		RAISE DEBUG 'admin.generate_list_bounds btype %',btype;
+		RAISE DEBUG 'admin.generate_list_bounds %',(keyspec.coltypes)[1];
 		FOR iter IN 1..pg_catalog.array_length(list,1)
 		LOOP
 			RAISE DEBUG 'admin.generate_list_bounds ARRAY[list[%]]=%',iter,ARRAY[list[iter]];
-			bound=admin.make_list_bound(ARRAY[list[iter]]);
+			EXECUTE format('SELECT * FROM admin.make_list_bound(ARRAY[$1::%s])',(keyspec.coltypes)[1]) USING list[iter] INTO bound;
+			-- bound=admin.make_list_bound(ARRAY[list[iter]::(SELECT (keyspec.coltypes)[1]]));
 			bounds=pg_catalog.array_append(bounds,bound);
 		END LOOP;
 	ELSIF (pg_catalog.array_ndims(list) = 2)
 	THEN
-		btype=pg_catalog.pg_typeof(list[1]);
-		RAISE DEBUG 'admin.generate_list_bounds btype %',btype;
+		RAISE DEBUG 'admin.generate_list_bounds btype %',(keyspec.coltypes)[1];
 		FOR iter IN 1..pg_catalog.array_length(list,1)
 		LOOP
 			RAISE DEBUG 'admin.generate_list_bounds list[%]=%',iter,list[iter];
-			bound=admin.make_list_bound(list[iter]);
+			EXECUTE format('SELECT * FROM admin.make_list_bound($1::%s)',(keyspec.coltypes)[1]||'[]') USING list[iter] INTO bound;
+			-- bound=admin.make_list_bound(list[iter]::(SELECT (keyspec.coltypes)[1]||'[]'));
 			bounds=pg_catalog.array_append(bounds,bound);
         END LOOP;
 	ELSE
@@ -175,7 +174,7 @@ BEGIN
 END
 $$;
 
-CREATE FUNCTION admin.generate_range_bounds(VARIADIC boundlist ANYARRAY)
+CREATE FUNCTION admin.generate_range_bounds(keyspec admin.partition_keyspec, VARIADIC boundlist ANYARRAY)
 RETURNS admin.range_bound[]
 LANGUAGE plpgsql
 AS
@@ -196,7 +195,7 @@ BEGIN
 	THEN
 		FOR iter IN 1..(nbbounds-1)
 		LOOP
-			bound=admin.make_range_bound(boundlist[iter],boundlist[iter+1]);
+			bound=admin.make_range_bound(boundlist[iter]::keyspec.coltypes[1],boundlist[iter+1]::keyspec.coltypes[1]);
 			bounds=pg_catalog.array_append(bounds,bound);
 		END LOOP;
 	ELSE
@@ -261,7 +260,7 @@ DECLARE
 BEGIN
     IF (keyspec.strategy = 'list')
 	THEN
-		lbounds=admin.generate_list_bounds(VARIADIC boundlist);
+		lbounds=admin.generate_list_bounds(keyspec, VARIADIC boundlist);
 
 	    IF (lbounds IS NULL)
 	    THEN
@@ -275,7 +274,7 @@ BEGIN
 	    END LOOP;
 	ELSIF (keyspec.strategy = 'range')
 	THEN
-		rbounds=admin.generate_range_bounds(VARIADIC boundlist);
+		rbounds=admin.generate_range_bounds(keyspec, VARIADIC boundlist);
 
         IF (rbounds IS NULL)
         THEN
@@ -417,7 +416,6 @@ BEGIN
         END IF;
 
 		-- check and remove default specs
-		--wdef=pg_catalog.regexp_like(pd,'.*WITH[[:space:]]+DEFAULT.*','i');
 		IF (pd ~* 'WITH[[:space:]]+DEFAULT')
 		THEN
 			wdef=true;
