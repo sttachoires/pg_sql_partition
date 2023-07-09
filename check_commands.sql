@@ -22,7 +22,7 @@ DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;
 CREATE TABLE public.tb (id BIGSERIAL, label TEXT, stamp TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT current_timestamp, region_id BIGINT);
 INSERT INTO public.tb (region_id) VALUES (generate_series(1, 10));
 SELECT * FROM admin.partitions;
-SET client_min_messages = debug;
+SET client_min_messages = NOTICE;
 SELECT 'admin.alter_table_partition_by',*
 FROM admin.alter_table_partition_by('public.tb','RANGE(region_id)');
 
@@ -35,7 +35,7 @@ DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;
 CREATE TABLE public.tb (id BIGSERIAL, label TEXT, stamp TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT current_timestamp, region_id BIGINT);
 INSERT INTO public.tb (region_id) VALUES (generate_series(1, 10));
 SELECT * FROM admin.partitions;
-SET client_min_messages = debug;
+SET client_min_messages = NOTICE;
 SELECT 'admin.alter_table_partition_by',*
 FROM admin.alter_table_partition_by('public.tb','HASH(stamp)');
 

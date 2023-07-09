@@ -191,9 +191,9 @@ BEGIN
 	THEN
 		pkeyspec.coltypes[1]=pg_catalog.pg_typeof((pg_catalog.string_to_array(bs,','))[1]);
 	END IF;
-	cmd=format('SELECT admin.make_list_bound(ARRAY[%s]::%s[])',bs,(pkeyspec).coltypes[1]);
+	cmd=format('SELECT admin.make_list_bound($1::%s[])',(pkeyspec).coltypes[1]);
 	RAISE DEBUG 'admin.string_to_list_partition_bound cmd %',cmd;
-	EXECUTE cmd INTO bound.listbound;
+	EXECUTE cmd USING pg_catalog.string_to_array(bs,',') INTO bound.listbound;
 
 	RETURN bound;
 END
@@ -205,6 +205,7 @@ LANGUAGE plpgsql
 AS
 $$
 DECLARE
+	sb		TEXT;
 	sbound	TEXT;
 	cmd		TEXT;
 	iter	BIGINT;
@@ -220,27 +221,36 @@ BEGIN
 		THEN
 			IF (pg_catalog.array_length((bound.listbound).elems,1) > 1)
 			THEN
-RAISE DEBUG 'admin.list_partition_bound_to_string more than one bound';
+				RAISE DEBUG 'admin.list_partition_bound_to_string more than one text bound';
 				--sbound=format('%s',(bound.listbound).elems[1]);
-				EXECUTE format('SELECT ''%s''::%s',(bound.listbound).elems[1],(bound.keyspec).coltypes[1]) INTO sbound;
+				RAISE DEBUG 'admin.list_partition_bound_to_string SELECT %::%',(bound.listbound).elems[1],(bound.keyspec).coltypes[1];
+				EXECUTE format('SELECT $1::%s',(bound.keyspec).coltypes[1]) USING (bound.listbound).elems[1] INTO sbound;
+				RAISE DEBUG 'admin.list_partition_bound_to_string sbound %',sbound;
 				FOR iter IN 2..pg_catalog.array_length((bound.listbound).elems,1)
 				LOOP
 					--sbound=format('%s,%s',sbound,(bound.listbound).elems[iter]);
-					EXECUTE format('SELECT %s,''%s''::%s',sbound,(bound.listbound).elems[iter],(bound.keyspec).coltypes[1]) INTO sbound;
+					EXECUTE format('SELECT $1::%s',(bound.keyspec).coltypes[1]) USING (bound.listbound).elems[iter] INTO sb;
+					RAISE DEBUG 'admin.list_partition_bound_to_string sb %',sb;
+					sbound=sbound||','||sb;
+					RAISE DEBUG 'admin.list_partition_bound_to_string sbound %',sbound;
 				END LOOP;
+				RAISE DEBUG 'admin.list_partition_bound_to_string sbound %',sbound;
 			ELSE
-RAISE DEBUG 'admin.list_partition_bound_to_string only one bound';
+				RAISE DEBUG 'admin.list_partition_bound_to_string only one text bound';
 				--sbound=format('%s::%s',(bound.listbound).elems[1],(bound.keyspec).coltypes[1]);
 				--sbound=format('%L',(bound.listbound).elems[1]);
-				EXECUTE format('SELECT ''%s''::%s',(bound.listbound).elems[1],(bound.keyspec).coltypes[1]) INTO sbound;
+				EXECUTE format('SELECT %L::%s',(bound.listbound).elems[1],(bound.keyspec).coltypes[1]) INTO sbound;
+				RAISE DEBUG 'admin.list_partition_bound_to_string sbound %',sbound;
 			END IF;
-			RAISE DEBUG 'admin.list_partition_bound_to_string % sbound %',(bound.listbound).subtyp,sbound;
+			RAISE DEBUG 'admin.list_partition_bound_to_string % sbound %',(bound.keyspec).coltypes[1],sbound;
 		ELSE
-			cmd=format('SELECT pg_catalog.array_to_string(''%s''::%s,'','')',(bound.listbound).elems,(bound.listbound).subtyp);
+			RAISE DEBUG 'admin.list_partition_bound_to_string not text  bound';
+			cmd=format('SELECT pg_catalog.array_to_string($1::%s[],'','')',(bound.keyspec).coltypes[1]);
 	
-			RAISE DEBUG 'admin.list_partition_bound_to_string % cmd %',(bound.listbound).subtyp,cmd;
+			RAISE DEBUG 'admin.list_partition_bound_to_string % cmd %',(bound.keyspec).coltypes[1],cmd;
 	
-			EXECUTE cmd INTO sbound;
+			EXECUTE cmd USING (bound.listbound).elems INTO sbound;
+			RAISE DEBUG 'admin.list_partition_bound_to_string sbound %',sbound;
 		END IF;
 
 		RAISE DEBUG 'admin.list_partition_bound_to_string sbound %',sbound;

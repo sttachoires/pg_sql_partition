@@ -15,7 +15,7 @@ FROM admin.create_automatic_table_like('public.tbh', 'public.tb_tpl', 'hash(id)'
 SET client_min_messages = notice;
 SELECT * FROM admin.partitions;
 
-SET client_min_messages = debug;
+SET client_min_messages = NOTICE;
 SELECT 'admin.create_automatic_table_like(public.tbl, public.tb_tpl, list(region_id), list (''AFR'',''AMN'',''ASI'',''EUR'',''OCE'') with default)',*
 FROM admin.create_automatic_table_like('public.tbl', 'public.tb_tpl', 'list(region_id)', 'list (''AFR'',''AMN'',''ASI'',''EUR'',''OCE'') with default');
 
@@ -33,7 +33,7 @@ SET client_min_messages = notice;
 DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;
 CREATE TABLE public.tb_tpl (id BIGSERIAL, label TEXT, stamp TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT current_timestamp, region_id TEXT);
 
-SET client_min_messages = debug;
+SET client_min_messages = NOTICE;
 SELECT 'admin.create_automatic_table_like(public.tb, public.tb_tpl, range(stamp),INTERVAL (1 month) CENTER (2023-06-01) BACK 2 AHEAD 3 WITH DEFAULT, list(region_id),list (''AFR'',''AMN'') with default),hash(id), modulus 2)',*
 FROM admin.create_automatic_table_like('public.tb', 'public.tb_tpl','range(stamp)','INTERVAL (1 month) CENTER (2023-06-01) BACK 2 AHEAD 3 WITH DEFAULT','list(region_id)','list (''AFR'',''AMN'') with default','hash(id)', 'modulus 2');
 

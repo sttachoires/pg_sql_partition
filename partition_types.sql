@@ -147,7 +147,7 @@ BEGIN
 
 	RAISE DEBUG 'admin.make_list_bound listbound %',listbound;
 
-	SELECT admin.array_sort(comps) INTO listbound.elems;
+	--SELECT admin.array_sort(comps) INTO listbound.elems;
 
 	RAISE DEBUG 'admin.make_list_bound listbound %',listbound;
 

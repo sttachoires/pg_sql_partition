@@ -55,16 +55,20 @@ FROM admin.range_partition_bound_to_string(admin.string_to_range_partition_bound
 																								  ARRAY['DATE','BIGINT','TEXT']),
 																	 'FROM (''2023-01-01'',0,''a'') TO (''2023-06-01'',5,''l'')'));
 
+SET client_min_messages = NOTICE;
 SELECT 'admin.string_to_list_partition_bound',*
 FROM admin.string_to_list_partition_bound(admin.make_partition_keyspec('list',
 																 ARRAY['region_id'],
-																 ARRAY['integer[]']),
+																 ARRAY['integer']),
 									'IN (0,1,3,6,12,2,5,4,8)');
+--									'IN (0,1,2,3,4,5,6,8,12)');
 SELECT 'admin.string_to_list_partition_bound',*
 FROM admin.string_to_list_partition_bound(admin.make_partition_keyspec('list',
 																 ARRAY['stamp'],
 																 ARRAY['DATE[]']),
 									'IN (''2023-1-1'',''2023-02-01'',''2023-03-01'')');
+
+SET client_min_messages = NOTICE;
 SELECT 'admin.string_to_list_partition_bound',*
 FROM admin.string_to_list_partition_bound(admin.make_partition_keyspec('list',
 																 ARRAY['stamp'],
@@ -79,22 +83,27 @@ FROM admin.string_to_list_partition_bound(admin.make_partition_keyspec('list',
 SELECT 'admin.list_partition_bound_to_string',*
 FROM admin.list_partition_bound_to_string(admin.string_to_list_partition_bound(admin.make_partition_keyspec('list',
 																								ARRAY['region_id'],
-																								ARRAY['integer[]']),
+																								ARRAY['integer']),
 									'IN (0,1,3,6,12,2,5,4,8)'));
+SET client_min_messages = NOTICE;
 SELECT 'admin.list_partition_bound_to_string',*
 FROM admin.list_partition_bound_to_string(admin.string_to_list_partition_bound(admin.make_partition_keyspec('list',
 																								ARRAY['stamp'],
-																								ARRAY['DATE[]']),
+																								ARRAY['DATE']),
 									'IN (''2023-1-1'',''2023-02-01'',''2023-03-01'')'));
+
+SET client_min_messages = NOTICE;
 SELECT 'admin.list_partition_bound_to_string',*
 FROM admin.list_partition_bound_to_string(admin.string_to_list_partition_bound(admin.make_partition_keyspec('list',
 																								ARRAY['stamp'],
-																								ARRAY['TEXT[]']),
+																								ARRAY['TEXT']),
 									'IN (''2023-1-1'',''2023-02-01'',''2023-03-01'')'));
+
+SET client_min_messages = NOTICE;
 SELECT 'admin.list_partition_bound_to_string',*
 FROM admin.list_partition_bound_to_string(admin.string_to_list_partition_bound(admin.make_partition_keyspec('list',
 																								ARRAY['label'],
-																								ARRAY['TEXT[]']),
+																								ARRAY['TEXT']),
 									'IN (''a'',''b'',''c'',''z'',''q'',''p'')'));
 
 SELECT 'admin.string_to_partition_bound',*

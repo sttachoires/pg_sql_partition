@@ -138,7 +138,7 @@ CREATE TABLE public.tb_d (id BIGSERIAL, label TEXT, stamp TIMESTAMP WITH TIME ZO
 CREATE TABLE public.tb_partition (id BIGSERIAL, label TEXT, stamp TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT current_timestamp, region_id BIGINT) PARTITION BY HASH(region_id);
 CREATE TABLE public.tb_default (id BIGSERIAL, label TEXT, stamp TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT current_timestamp, region_id BIGINT) PARTITION BY HASH(region_id);
 
-SET client_min_messages = debug;
+SET client_min_messages = NOTICE;
 SELECT 'admin.generate_partition_name',*
 FROM admin.generate_partition_name(admin.make_qualname('public','tb'));
 

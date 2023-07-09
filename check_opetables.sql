@@ -123,9 +123,9 @@ CREATE TABLE public.tb_d PARTITION OF public.tb DEFAULT;
 INSERT INTO public.tb (region_id) VALUES (generate_series(1, 10));
 SELECT * FROM admin.partitions;
 SELECT * FROM admin.relations;
-SET client_min_messages = NOTICE;
+SET client_min_messages = debug;
 SELECT 'admin.get_partition_bound',*
-FROM admin.get_partition_bound(admin.make_qualname('public'::TEXT,'tb_1'));
+FROM admin.get_partition_bound(admin.make_qualname('public','tb_1'));
 SET client_min_messages = notice;
 
 SELECT 'admin.get_partition_bounds',pg_catalog.unnest(tpb)
@@ -262,7 +262,7 @@ CREATE SCHEMA public;
 CREATE TABLE public.tbl (id BIGSERIAL, label TEXT, stamp TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT current_timestamp, region_id BIGINT)
     PARTITION BY list (region_id);
 SELECT * FROM admin.partitions;
-SET client_min_messages = debug;
+SET client_min_messages = NOTICE;
 SELECT 'admin.create_partition'
 FROM admin.create_partition(admin.make_qualname('public','tbl'),
 							admin.make_qualname('public','tbl'),
@@ -309,7 +309,7 @@ DROP SCHEMA public CASCADE;
 CREATE SCHEMA public;
 CREATE TABLE public.tb_tpl (id BIGSERIAL, label TEXT, stamp TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT current_timestamp, region_id BIGINT);
 
-SET client_min_messages = debug;
+SET client_min_messages = NOTICE;
 SELECT 'admin.create_table',*
 FROM admin.create_table(admin.make_qualname('public','tbl'),
                         admin.make_qualname('public','tb_tpl'),
