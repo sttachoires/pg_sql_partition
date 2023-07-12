@@ -1,6 +1,8 @@
-SET client_min_messages=notice;
+SET client_min_messages=ERROR;
 \set ON_ERROR_STOP on
+\set ECHO none
 \i partition_opebounds.sql
+\set ECHO all
 
 SELECT 'admin.hash_partition_bound_to_qualifier',*
 FROM admin.hash_partition_bound_to_qualifier(admin.make_qualname('public'::TEXT,'tb5'::TEXT),
@@ -185,6 +187,7 @@ FROM admin.sort_partitions(ARRAY[admin.make_partition(admin.make_qualname('publi
 							]);
 
 SET client_min_messages=notice;
+\set ECHO none
 SELECT 'admin.check_them_all',* FROM admin.check_them_all();
 
 

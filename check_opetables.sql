@@ -1,7 +1,9 @@
-SET client_min_messages = notice;
+SET client_min_messages = error;
 \set ON_ERROR_STOP on
 \pset pager off
+\set ECHO none
 \i partition_opetables.sql
+\set ECHO all
 
 SET client_min_messages = notice;
 DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;;
@@ -123,11 +125,12 @@ CREATE TABLE public.tb_d PARTITION OF public.tb DEFAULT;
 INSERT INTO public.tb (region_id) VALUES (generate_series(1, 10));
 SELECT * FROM admin.partitions;
 SELECT * FROM admin.relations;
-SET client_min_messages = debug;
+
+SET client_min_messages = NOTICE;
 SELECT 'admin.get_partition_bound',*
 FROM admin.get_partition_bound(admin.make_qualname('public','tb_1'));
-SET client_min_messages = notice;
 
+SET client_min_messages = notice;
 SELECT 'admin.get_partition_bounds',pg_catalog.unnest(tpb)
 FROM admin.get_partition_bounds(ARRAY[admin.make_qualname('public'::TEXT,'tb_1'),
                                       admin.make_qualname('public'::TEXT,'tb_2'),
@@ -426,6 +429,8 @@ FROM admin.get_table_constraint_defs(admin.make_qualname('public','tb_2'));
 SELECT 'admin.get_table_constraint_qualifier',*
 FROM admin.get_table_constraint_qualifier(admin.make_qualname('public','tb_2'));
 
+\set ECHO none
+SET client_min_messages = NOTICE;
 SELECT 'admin.check_them_all',* FROM admin.check_them_all();
 
 

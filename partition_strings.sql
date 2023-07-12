@@ -163,6 +163,7 @@ DECLARE
     bs          TEXT;
 	bound		admin.partition_bound;
 	cmd			TEXT;
+
 BEGIN
 	bound.isdefault=false;
 
@@ -189,11 +190,16 @@ BEGIN
 	--cmd=format('SELECT * FROM admin.make_list_bound((%s)::%s)',bs,(pkeyspec).coltypes[1]);
 	IF ((pkeyspec.coltypes[1] <> '' ) IS NOT TRUE)
 	THEN
+		RAISE DEBUG 'admin.string_to_list_partition_bound pkeyspec.coltypes[1]=%',pkeyspec.coltypes[1];
 		pkeyspec.coltypes[1]=pg_catalog.pg_typeof((pg_catalog.string_to_array(bs,','))[1]);
+		RAISE DEBUG 'admin.string_to_list_partition_bound pkeyspec.coltypes[1]=%',pkeyspec.coltypes[1];
 	END IF;
-	cmd=format('SELECT admin.make_list_bound($1::%s[])',(pkeyspec).coltypes[1]);
-	RAISE DEBUG 'admin.string_to_list_partition_bound cmd %',cmd;
-	EXECUTE cmd USING pg_catalog.string_to_array(bs,',') INTO bound.listbound;
+--	cmd=format('SELECT admin.make_list_bound(ARRAY[$1])',(pkeyspec).coltypes[1]);
+--	RAISE DEBUG 'admin.string_to_list_partition_bound cmd %',cmd;
+--	EXECUTE cmd USING bs INTO bound.listbound;
+
+	bound.listbound.subtyp=pkeyspec.coltypes[1]||'[]';
+	bound.listbound.elems=pg_catalog.string_to_array(bs,',');
 
 	RETURN bound;
 END

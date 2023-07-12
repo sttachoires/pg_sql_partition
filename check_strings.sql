@@ -1,7 +1,8 @@
-SET client_min_messages=notice;
+SET client_min_messages=ERROR;
 \set ON_ERROR_STOP on
 \pset pager off
 \i partition_strings.sql
+\set ECHO all
 
 SELECT 'admin.string_to_partition_keyspec',*
 FROM admin.string_to_partition_keyspec(admin.make_qualname('public','tb'),'Range( id,   region_id)');
@@ -165,8 +166,9 @@ FROM admin.partition_bound_to_string(admin.make_list_partition_bound(admin.make_
                                      ARRAY['bigint']),
                                 admin.make_list_bound(ARRAY[0,1,3,6,12,2,5,4,8])));
 
+\set ECHO none
+SET client_min_messages=notice;
 SELECT 'admin.check_them_all',* FROM admin.check_them_all();
 
-SET client_min_messages=notice;
 
 

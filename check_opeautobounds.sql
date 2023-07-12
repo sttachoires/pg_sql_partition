@@ -1,17 +1,20 @@
-SET client_min_messages = notice;
+SET client_min_messages = ERROR;
 \set ON_ERROR_STOP on
 \pset pager off
 \x off
+\set ECHO none
 \i partition_opeautobounds.sql
+\set ECHO all
 
 SELECT 'admin.generate_hash_partition_bounds(4)',*
 FROM admin.generate_hash_bounds(4);
 
-SELECT 'admin.generate_list_partition_bounds(''A'',''B'',''C'',''D'',''E'')',*
-FROM admin.generate_list_bounds('A','B','C','D','E');
+SELECT 'admin.generate_list_partition_bounds(admin.make_partition_keyspec(''list'',ARRAY[''id''],ARRAY[''TEXT'']),''A'',''B'',''C'',''D'',''E'')',*
+FROM admin.generate_list_bounds(admin.make_partition_keyspec('list',ARRAY['id'],ARRAY['TEXT']),'A','B','C','D','E');
 
-SELECT 'admin.generate_list_partition_bounds(ARRAY[''A'']::TEXT,ARRAY[''B'',''C'']::TEXT,ARRAY[''E'']::TEXT)',*
-FROM admin.generate_list_bounds(ARRAY['A','D']::TEXT,ARRAY['B','C']::TEXT,ARRAY['E']::TEXT);
+SET client_min_messages = debug;
+SELECT 'admin.generate_list_partition_bounds(admin.make_partition_keyspec(''list'',ARRAY[''id''],ARRAY[''TEXT'']),ARRAY[''A'']::TEXT[],ARRAY[''B'',''C'']::TEXT[],ARRAY[''E'']::TEXT[])',*
+FROM admin.generate_list_bounds(admin.make_partition_keyspec('list',ARRAY['id'],ARRAY['TEXT']),ARRAY['A','D'],ARRAY['B','C'],ARRAY['E']);
 
 SELECT 'admin.generate_range_partition_bounds(2, 0, 2, 2)',*
 FROM admin.generate_range_bounds(2, 0, 2, 2);
@@ -50,4 +53,5 @@ SELECT 'admin.string_to_automatic_partitions((public.tb),(range,{stamp},{DATE}),
 FROM admin.string_to_automatic_partitions(admin.make_qualname('public','tb'), admin.make_partition_keyspec('range','{stamp}','{DATE}'),'OVER AUTOMATIC INTERVAL (1 month) CENTER (2023-06-23) BACK 2 AHEAD 2 WITH DEFAULT');
 
 SET client_min_messages=notice;
+\set ECHO none
 SELECT 'admin.check_them_all',* FROM admin.check_them_all();

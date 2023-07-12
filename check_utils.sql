@@ -2,10 +2,11 @@
 -- Regression test for partition_utils.sql
 --
 
-SET client_min_messages=notice;
+SET client_min_messages=ERROR;
 \set ON_ERROR_STOP on
 \pset pager off
 \i partition_utils.sql
+\set ECHO all
 
 SELECT 'admin.array_sort',*
 FROM admin.array_sort(ARRAY[0,100,'42']);
@@ -162,6 +163,7 @@ SET client_min_messages = NOTICE;
 SELECT 'admin.rename_table',*
 FROM admin.rename_table(admin.make_qualname('public','tb'),admin.make_qualname('public','renamed_tb'));
 SET client_min_messages = notice;
+SELECT * FROM admin.relations;
 
 SET client_min_messages = notice;
 DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;;
@@ -202,10 +204,16 @@ CREATE TABLE public.tbp (id BIGSERIAL, label TEXT, stamp TIMESTAMP WITH TIME ZON
     PRIMARY KEY (id))
     PARTITION BY HASH(id);
 
+SELECT * FROM admin.relations;
+
 SET client_min_messages = NOTICE;
 SELECT 'admin.swap_tables',*
 FROM admin.swap_tables(admin.make_qualname('public','tb'),admin.make_qualname('public','tbp'));
 
+SET client_min_messages = notice;
+SELECT * FROM admin.relations;
+
+\set ECHO none
 SET client_min_messages = notice;
 SELECT 'admin.check_them_all',*
 FROM admin.check_them_all();
